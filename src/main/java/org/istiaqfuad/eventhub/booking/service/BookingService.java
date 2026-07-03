@@ -5,6 +5,7 @@ import org.istiaqfuad.eventhub.booking.dto.BookingResponse;
 import org.istiaqfuad.eventhub.booking.entity.Booking;
 import org.istiaqfuad.eventhub.booking.entity.BookingStatus;
 import org.istiaqfuad.eventhub.booking.repository.BookingRepository;
+import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
 import org.istiaqfuad.eventhub.event.repository.EventRepository;
 import org.istiaqfuad.eventhub.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Basic booking creation/read. Creates the booking header only — seat
@@ -46,7 +46,7 @@ public class BookingService {
     @Transactional(readOnly = true)
     public BookingResponse get(Long id) {
         Booking booking = bookings.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("booking not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Booking", id));
         return toResponse(booking);
     }
 

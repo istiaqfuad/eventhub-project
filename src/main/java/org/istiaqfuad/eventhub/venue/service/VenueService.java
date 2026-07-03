@@ -1,5 +1,6 @@
 package org.istiaqfuad.eventhub.venue.service;
 
+import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
 import org.istiaqfuad.eventhub.venue.dto.VenueRequest;
 import org.istiaqfuad.eventhub.venue.dto.VenueResponse;
 import org.istiaqfuad.eventhub.venue.entity.Venue;
@@ -8,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Basic venue CRUD. A venue is self-contained (no foreign keys), so this is
@@ -36,7 +36,7 @@ public class VenueService {
     @Transactional(readOnly = true)
     public VenueResponse get(Long id) {
         Venue venue = venues.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("venue not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Venue", id));
         return toResponse(venue);
     }
 

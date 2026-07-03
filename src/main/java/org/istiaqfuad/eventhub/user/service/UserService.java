@@ -1,5 +1,7 @@
 package org.istiaqfuad.eventhub.user.service;
 
+import org.istiaqfuad.eventhub.common.exception.DuplicateResourceException;
+import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
 import org.istiaqfuad.eventhub.user.dto.RegisterUserRequest;
 import org.istiaqfuad.eventhub.user.dto.UserResponse;
 import org.istiaqfuad.eventhub.user.entity.User;
@@ -7,7 +9,6 @@ import org.istiaqfuad.eventhub.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -27,7 +28,7 @@ public class UserService {
 
     public UserResponse register(RegisterUserRequest request) {
         if (users.existsByEmail(request.email())) {
-            throw new IllegalStateException("email already registered: " + request.email());
+            throw new DuplicateResourceException("email already registered: " + request.email());
         }
         User user = new User();
         user.setEmail(request.email());
@@ -39,7 +40,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse get(Long id) {
         User user = users.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("user not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("User", id));
         return toResponse(user);
     }
 

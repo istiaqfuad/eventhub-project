@@ -1,5 +1,6 @@
 package org.istiaqfuad.eventhub.event.service;
 
+import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
 import org.istiaqfuad.eventhub.event.dto.EventRequest;
 import org.istiaqfuad.eventhub.event.dto.EventResponse;
 import org.istiaqfuad.eventhub.event.entity.Event;
@@ -15,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -75,7 +75,7 @@ public class EventService {
     @Transactional(readOnly = true)
     public EventResponse get(Long id) {
         Event event = events.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("event not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Event", id));
         return toResponse(event);
     }
 

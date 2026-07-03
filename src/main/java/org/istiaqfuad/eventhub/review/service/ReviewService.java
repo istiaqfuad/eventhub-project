@@ -1,5 +1,7 @@
 package org.istiaqfuad.eventhub.review.service;
 
+import org.istiaqfuad.eventhub.common.exception.DuplicateResourceException;
+import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
 import org.istiaqfuad.eventhub.event.repository.EventRepository;
 import org.istiaqfuad.eventhub.review.dto.ReviewRequest;
 import org.istiaqfuad.eventhub.review.dto.ReviewResponse;
@@ -10,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 
 /**
  * Basic review creation/read. One review per user per event is enforced by
@@ -33,7 +34,7 @@ public class ReviewService {
 
     public ReviewResponse create(ReviewRequest request, Long userId) {
         if (reviews.existsByEventIdAndUserId(request.eventId(), userId)) {
-            throw new IllegalStateException("user has already reviewed event " + request.eventId());
+            throw new DuplicateResourceException("user has already reviewed event " + request.eventId());
         }
         Review review = new Review();
         review.setEvent(events.getReferenceById(request.eventId()));
@@ -46,7 +47,7 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public ReviewResponse get(Long id) {
         Review review = reviews.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("review not found: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Review", id));
         return toResponse(review);
     }
 
