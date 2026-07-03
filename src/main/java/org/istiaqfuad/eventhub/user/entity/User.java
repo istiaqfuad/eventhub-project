@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.UuidGenerator;
-import org.istiaqfuad.eventhub.common.BaseEntity;
+import org.istiaqfuad.eventhub.common.AuditableEntity;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -17,7 +17,7 @@ import static org.hibernate.annotations.UuidGenerator.Style.TIME;
 @Setter
 @Entity
 @Table(name = "users")
-public class User extends BaseEntity {
+public class User extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)

@@ -7,7 +7,7 @@ import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UuidGenerator;
-import org.istiaqfuad.eventhub.common.BaseEntity;
+import org.istiaqfuad.eventhub.common.AuditableEntity;
 import org.istiaqfuad.eventhub.event.entity.Event;
 import org.istiaqfuad.eventhub.user.entity.User;
 
@@ -20,7 +20,7 @@ import static org.hibernate.annotations.UuidGenerator.Style.TIME;
 @Setter
 @Entity
 @Table(name = "bookings")
-public class Booking extends BaseEntity {
+public class Booking extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)

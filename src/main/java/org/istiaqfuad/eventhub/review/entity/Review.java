@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.istiaqfuad.eventhub.common.BaseEntity;
+import org.istiaqfuad.eventhub.common.AuditableEntity;
 import org.istiaqfuad.eventhub.event.entity.Event;
 import org.istiaqfuad.eventhub.user.entity.User;
 
@@ -13,7 +13,7 @@ import org.istiaqfuad.eventhub.user.entity.User;
 @Setter
 @Entity
 @Table(name = "reviews")
-public class Review extends BaseEntity {
+public class Review extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)

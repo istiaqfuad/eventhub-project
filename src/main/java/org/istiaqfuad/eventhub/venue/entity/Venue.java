@@ -3,13 +3,13 @@ package org.istiaqfuad.eventhub.venue.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.istiaqfuad.eventhub.common.BaseEntity;
+import org.istiaqfuad.eventhub.common.AuditableEntity;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "venues")
-public class Venue extends BaseEntity {
+public class Venue extends AuditableEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false)
