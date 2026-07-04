@@ -1,8 +1,6 @@
 package org.istiaqfuad.eventhub.user.service;
 
-import org.istiaqfuad.eventhub.common.exception.DuplicateResourceException;
 import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
-import org.istiaqfuad.eventhub.user.dto.RegisterUserRequest;
 import org.istiaqfuad.eventhub.user.dto.UserResponse;
 import org.istiaqfuad.eventhub.user.entity.User;
 import org.istiaqfuad.eventhub.user.repository.UserRepository;
@@ -12,10 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Basic user operations. Registration stores the account disabled with no
- * roles; role assignment and password hashing arrive with Spring Security.
- */
+/** Read-side user operations. Registration lives in the auth module (AuthService). */
 @Service
 @Transactional
 public class UserService {
@@ -24,17 +19,6 @@ public class UserService {
 
     public UserService(UserRepository users) {
         this.users = users;
-    }
-
-    public UserResponse register(RegisterUserRequest request) {
-        if (users.existsByEmail(request.email())) {
-            throw new DuplicateResourceException("email already registered: " + request.email());
-        }
-        User user = new User();
-        user.setEmail(request.email());
-        user.setPasswordHash(request.password()); // TODO: hash once Spring Security is wired
-        user.setEnabled(false);
-        return toResponse(users.save(user));
     }
 
     @Transactional(readOnly = true)
@@ -48,13 +32,8 @@ public class UserService {
         Set<String> roleNames = user.getRoles().stream()
                 .map(role -> role.getName().name())
                 .collect(Collectors.toUnmodifiableSet());
-        return new UserResponse(
-                user.getId(),
-                user.getPublicId(),
-                user.getEmail(),
-                Boolean.TRUE.equals(user.getEnabled()),
-                roleNames,
-                user.getCreatedAt(),
-                user.getUpdatedAt());
+        return new UserResponse(user.getId(), user.getPublicId(), user.getEmail(),
+                Boolean.TRUE.equals(user.getEnabled()), roleNames,
+                user.getCreatedAt(), user.getUpdatedAt());
     }
 }

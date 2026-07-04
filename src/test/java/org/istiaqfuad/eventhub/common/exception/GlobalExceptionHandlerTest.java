@@ -1,13 +1,20 @@
 package org.istiaqfuad.eventhub.common.exception;
 
+import org.istiaqfuad.eventhub.auth.controller.AuthController;
+import org.istiaqfuad.eventhub.auth.service.AuthService;
 import org.istiaqfuad.eventhub.config.WebMvcConfig;
+import org.istiaqfuad.eventhub.security.CookieProperties;
+import org.istiaqfuad.eventhub.security.JwtProperties;
 import org.istiaqfuad.eventhub.user.controller.UserController;
 import org.istiaqfuad.eventhub.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.password.CompromisedPasswordException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,11 +28,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Verifies the exception pipeline in isolation (no datasource). Drives
- * {@link UserController} with a mocked service so each exception type is
- * mapped to the intended RFC 9457 {@code application/problem+json} response.
+ * Verifies the exception pipeline in isolation (no datasource, security filters
+ * disabled). Drives {@link UserController} and {@link AuthController} with mocked
+ * services so each exception type maps to the intended RFC 9457
+ * {@code application/problem+json} response.
  */
-@WebMvcTest(UserController.class)
+@WebMvcTest(controllers = {UserController.class, AuthController.class})
+@AutoConfigureMockMvc(addFilters = false)
 @Import({WebMvcConfig.class, GlobalExceptionHandler.class})
 class GlobalExceptionHandlerTest {
 
@@ -36,6 +45,15 @@ class GlobalExceptionHandlerTest {
 
     @MockitoBean
     UserService userService;
+
+    @MockitoBean
+    AuthService authService;
+
+    @MockitoBean
+    CookieProperties cookieProperties;
+
+    @MockitoBean
+    JwtProperties jwtProperties;
 
     @Test
     void resourceNotFoundMapsTo404ProblemDetail() throws Exception {
@@ -53,10 +71,10 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void duplicateResourceMapsTo409() throws Exception {
-        given(userService.register(any()))
+        given(authService.register(any()))
                 .willThrow(new DuplicateResourceException("email already registered: a@b.com"));
 
-        mvc.perform(post("/api/users")
+        mvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON).accept(V1)
                         .content("{\"email\":\"a@b.com\",\"password\":\"password123\"}"))
                 .andExpect(status().isConflict())
@@ -67,8 +85,38 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void compromisedPasswordMapsTo400() throws Exception {
+        given(authService.register(any()))
+                .willThrow(new CompromisedPasswordException("breached"));
+
+        mvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON).accept(V1)
+                        .content("{\"email\":\"a@b.com\",\"password\":\"password123\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("COMPROMISED_PASSWORD"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
+    void badCredentialsMapsTo401() throws Exception {
+        given(authService.login(any()))
+                .willThrow(new BadCredentialsException("bad"));
+
+        mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON).accept(V1)
+                        .content("{\"email\":\"a@b.com\",\"password\":\"password123\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.timestamp").exists());
+    }
+
+    @Test
     void invalidBodyMapsTo400WithFieldErrors() throws Exception {
-        mvc.perform(post("/api/users")
+        mvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON).accept(V1)
                         .content("{\"email\":\"not-an-email\",\"password\":\"short\"}"))
                 .andExpect(status().isBadRequest())

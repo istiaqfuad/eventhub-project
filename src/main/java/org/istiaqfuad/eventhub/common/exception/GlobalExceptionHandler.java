@@ -4,7 +4,10 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.istiaqfuad.eventhub.auth.service.InvalidRefreshTokenException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.authentication.password.CompromisedPasswordException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -57,6 +60,32 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "The request violates a data constraint: a referenced record is missing "
                         + "or a unique value already exists.",
                 "CONSTRAINT_VIOLATION");
+    }
+
+    /**
+     * Registration with a password found in a known breach. Declared before the broader
+     * {@link AuthenticationException} handler; Spring picks the most specific match, so
+     * compromised passwords map to 400 while every other auth failure maps to 401.
+     */
+    @ExceptionHandler(CompromisedPasswordException.class)
+    public ProblemDetail handleCompromisedPassword(CompromisedPasswordException ex) {
+        return problem(HttpStatus.BAD_REQUEST,
+                "The provided password appears in a known data breach; choose another.",
+                "COMPROMISED_PASSWORD");
+    }
+
+    /** Login failures (bad password, disabled account) — never reveal which. */
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        return problem(HttpStatus.UNAUTHORIZED, "Invalid email or password.", "INVALID_CREDENTIALS");
+    }
+
+    /** Refresh token missing from store, expired, or replayed after rotation. */
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ProblemDetail handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        return problem(HttpStatus.UNAUTHORIZED,
+                "The refresh token is invalid or expired. Please sign in again.",
+                "INVALID_REFRESH_TOKEN");
     }
 
     /** Last-resort handler so nothing escapes as a raw stack trace. */

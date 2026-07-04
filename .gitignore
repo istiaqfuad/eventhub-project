@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+.env
+
+### Local planning/spec artifacts (not part of the repo) ###
+docs/superpowers/
