@@ -19,8 +19,11 @@ Two independent authentication paths share one `AuthenticationManager`:
 | **Password login** | `POST /api/auth/login` | `DaoAuthenticationProvider` (bcrypt) | yes — load user |
 | **Bearer request** | any request with `Authorization: Bearer …` | custom `JwtAuthenticationProvider` | no — trusts signed claims |
 
-Authorization is **coarse** today: a single public/private boundary plus role-based
-method security (`@PreAuthorize`) available for per-endpoint tightening.
+Authorization has **three layers**: a URL-level public/private boundary, **role gates**
+(`@PreAuthorize`) on privileged write endpoints, and **object-level ownership checks** in
+the service layer so a caller can only read or act on its own records. The authenticated
+caller is injected into handlers via `@CurrentUserId` (numeric id) or `@CurrentUser`
+(id + roles) rather than trusted from the request body.
 
 ---
 
@@ -35,6 +38,9 @@ method security (`@PreAuthorize`) available for per-endpoint tightening.
 | 5 | Compromised-password check | HaveIBeenPwned, **registration only** | Blocks breached passwords without adding an external call to the login hot path |
 | 6 | CSRF | enabled but **scoped** to the cookie endpoints | Bearer endpoints are CSRF-immune; only cookie-authenticated `refresh`/`logout` need it |
 | 7 | Auditor | authenticated user id (`Long`) | FK-joinable `created_by`/`updated_by` for auditing |
+| 8 | Caller identity | resolved from the security context (`@CurrentUserId` / `@CurrentUser`), **never** from the body | A client cannot act as another user by sending someone else's id |
+| 9 | Ownership | checked in the service layer → `AccessDeniedException` (403) | Owner-or-ADMIN on per-user records (bookings, payments, own profile) closes IDOR |
+| 10 | Event organizer | derived from the caller's organizer profile; ADMIN may override | Prevents creating events under another organizer's identity |
 
 ---
 
@@ -88,8 +94,11 @@ security/
     AppUserDetailsService   loadUserByUsername(email) with roles eagerly fetched
   web/
     ProblemAuthenticationEntryPoint  401 → RFC 9457 problem+json
-    ProblemAccessDeniedHandler       403 → RFC 9457 problem+json
+    ProblemAccessDeniedHandler       403 → RFC 9457 problem+json (for exceptions outside MVC)
     CsrfCookieFilter                 materializes the XSRF-TOKEN cookie
+    AuthenticatedUser                caller value object (id + role names) for authz decisions
+    CurrentUserId / resolver         injects the caller's numeric id from the security context
+    CurrentUser    / resolver        injects AuthenticatedUser (id + roles) from the context
 auth/
   controller/AuthController        /register /login /refresh /logout
   service/AuthService              orchestration (register + token lifecycle)
@@ -205,32 +214,67 @@ Everything not listed is authenticated. Paths include the `/api` prefix added by
 ```
 PUBLIC (permitAll):
   POST /api/auth/register, /api/auth/login, /api/auth/refresh, /api/auth/logout
-  GET  /api/events/**, /api/venues/**, /api/version
+  GET  /api/events/**, /api/venues/**, /api/reviews/**, /api/version
        /error, GET /actuator/health
 AUTHENTICATED: everything else
 ```
+
+Event listings, venue listings and reviews are public browse surfaces (`GET`); writes to
+them are not.
 
 `/api/auth/refresh` and `/api/auth/logout` are `permitAll` at the authorization layer —
 they are authenticated by the **refresh cookie** inside the service and guarded by CSRF,
 not by a bearer token.
 
-### 6.2 Roles & method security
+### 6.2 Roles
 
 - Roles are seeded in `roles`: `CUSTOMER`, `ORGANIZER`, `ADMIN` (V2 migration).
 - A user's roles map to Spring authorities `ROLE_<name>` (`AppUserPrincipal`).
 - Role names travel in the JWT `roles` claim, so bearer requests carry authorities with
   no DB lookup.
-- `@EnableMethodSecurity` is on. Tighten any endpoint incrementally:
+- Registration assigns `CUSTOMER`; `ORGANIZER`/`ADMIN` are granted out of band.
 
-  ```java
-  @PreAuthorize("hasRole('ADMIN')")
-  @DeleteMapping("/{id}")
-  public void remove(@PathVariable Long id) { … }
-  ```
+### 6.3 Role gates (`@PreAuthorize`, method security enabled)
 
-- The current authenticated principal id is available via
-  `SecurityContextHolder.getContext().getAuthentication().getPrincipal()`
-  (`AppUserPrincipal` on the login path, a bare `Long` user id on the bearer path).
+| Endpoint | Requires |
+|----------|----------|
+| `POST /api/events` | `ORGANIZER` or `ADMIN` |
+| `POST /api/venues` | `ORGANIZER` or `ADMIN` |
+
+A denied role gate raises `AccessDeniedException` → **403 `ACCESS_DENIED`**. Because bean
+validation on `@RequestBody` runs during argument resolution, a *malformed* body still
+returns 400 before the gate is evaluated.
+
+### 6.4 Ownership (object-level, service layer)
+
+The caller id comes from `@CurrentUser` / `@CurrentUserId`; the service loads the target
+and rejects with `AccessDeniedException` (403) unless the caller owns it or is `ADMIN`.
+
+| Endpoint | Rule |
+|----------|------|
+| `GET /api/bookings/{id}` | owner (`booking.user`) or ADMIN |
+| `GET /api/payments/{id}` | owner (`payment.booking.user`) or ADMIN |
+| `POST /api/payments` | the target booking must belong to the caller (or ADMIN) |
+| `GET /api/users/{id}` | self or ADMIN |
+| `POST /api/events` | owning organizer is **derived** from the caller (`OrganizerRepository.findByUserId`); the body's `organizerId` is ignored for non-admins, honored only for ADMIN acting on another's behalf |
+
+`POST /api/bookings` and `POST /api/reviews` remain open to any authenticated user (a
+customer books and reviews); the buyer/author is taken from the principal, never the body.
+
+### 6.5 Where the caller comes from
+
+```java
+// numeric id only (e.g. the buyer on a booking)
+public BookingResponse create(@Valid @RequestBody BookingRequest req, @CurrentUserId Long userId)
+
+// id + roles, for ownership / admin-override decisions
+public BookingResponse get(@PathVariable Long id, @CurrentUser AuthenticatedUser caller)
+```
+
+Both resolvers read `SecurityContextHolder` (a bare `Long` on the bearer path, an
+`AppUserPrincipal` on the login path) and reject an anonymous/unauthenticated request with
+401 rather than injecting `null`. `AuthenticatedUser.isAdmin()` gates the ownership
+overrides. Registered in `WebMvcConfig.addArgumentResolvers`.
 
 ---
 
@@ -281,7 +325,7 @@ consistent with `GlobalExceptionHandler`.
 | Condition | Status | `code` | Source |
 |-----------|--------|--------|--------|
 | Unauthenticated / bad or missing token | 401 | `UNAUTHENTICATED` | `ProblemAuthenticationEntryPoint` |
-| Authenticated but forbidden | 403 | `ACCESS_DENIED` | `ProblemAccessDeniedHandler` |
+| Authenticated but forbidden (role gate or ownership) | 403 | `ACCESS_DENIED` | `GlobalExceptionHandler` (MVC) / `ProblemAccessDeniedHandler` (filter chain) |
 | Bad credentials / disabled at login | 401 | `INVALID_CREDENTIALS` | `GlobalExceptionHandler` |
 | Refresh token invalid / expired / reused | 401 | `INVALID_REFRESH_TOKEN` | `GlobalExceptionHandler` |
 | Registration password in a breach | 400 | `COMPROMISED_PASSWORD` | `GlobalExceptionHandler` |
@@ -364,12 +408,21 @@ and `refresh_tokens` already exist (V1); roles are seeded (V2).
 
 **Unit / slice tests** (`./mvnw test`): `JwtServiceTest` (round-trip, expiry, tamper,
 issuer), `RefreshTokenServiceTest` (issue/rotate/expire/reuse/revoke),
-`GlobalExceptionHandlerTest` (error mapping incl. 401/400 auth cases).
+`GlobalExceptionHandlerTest` (error mapping incl. 401/400/403 cases). Authorization:
+`CurrentUserIdArgumentResolverTest` / `CurrentUserArgumentResolverTest` (id + roles,
+anonymous rejected), and the service-layer ownership/role decisions —
+`BookingServiceTest`, `PaymentServiceTest`, `UserServiceTest`, `EventServiceTest`
+(owner vs other vs ADMIN; organizer derived from caller, body id ignored / spoof-proof).
 
 **Live end-to-end** (register → login → bearer → refresh → logout, plus negatives):
 public browse 200, register 201, breached password 400, login 200 (both cookies),
 bearer 200, no-token 401, refresh-without-CSRF 403, refresh-with-CSRF 200 (rotates),
 logout 204; reuse: replay of a rotated token 401 and the whole family revoked.
+
+**Live authorization** (verified against a running server): `GET /users/{self}` 200 vs
+`{other}` 403 vs no-token 401; `POST /events` and `POST /venues` as a `CUSTOMER` → 403;
+public `GET /events`, `/venues`, `/reviews/*` → 200; `POST /bookings` with no token → 401.
+The `ORGANIZER`-succeeds path is covered by `EventServiceTest` (no organizer is seeded).
 
 The **Postman "EventHub API" → Auth** folder reproduces this flow (reads `XSRF-TOKEN`
 from the cookie jar for the refresh/logout CSRF header). Run it top-to-bottom against a
