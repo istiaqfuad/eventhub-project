@@ -1,5 +1,6 @@
 package org.istiaqfuad.eventhub.config;
 
+import org.istiaqfuad.eventhub.security.web.CurrentUserArgumentResolver;
 import org.istiaqfuad.eventhub.security.web.CurrentUserIdArgumentResolver;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -38,6 +39,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(new CurrentUserIdArgumentResolver());
+        resolvers.add(new CurrentUserArgumentResolver());
     }
 
     @Override

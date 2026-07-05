@@ -8,6 +8,8 @@ import org.istiaqfuad.eventhub.payment.dto.PaymentResponse;
 import org.istiaqfuad.eventhub.payment.entity.Payment;
 import org.istiaqfuad.eventhub.payment.entity.PaymentStatus;
 import org.istiaqfuad.eventhub.payment.repository.PaymentRepository;
+import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +30,12 @@ public class PaymentService {
         this.bookings = bookings;
     }
 
-    public PaymentResponse create(PaymentRequest request) {
+    public PaymentResponse create(PaymentRequest request, AuthenticatedUser caller) {
         Booking booking = bookings.findById(request.bookingId())
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", request.bookingId()));
+        if (!caller.isAdmin() && !booking.getUser().getId().equals(caller.id())) {
+            throw new AccessDeniedException("Booking does not belong to the caller");
+        }
         Payment payment = new Payment();
         payment.setBooking(booking);
         payment.setAmount(booking.getTotal());
@@ -40,9 +45,12 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public PaymentResponse get(Long id) {
+    public PaymentResponse get(Long id, AuthenticatedUser caller) {
         Payment payment = payments.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", id));
+        if (!caller.isAdmin() && !payment.getBooking().getUser().getId().equals(caller.id())) {
+            throw new AccessDeniedException("Payment does not belong to the caller");
+        }
         return toResponse(payment);
     }
 

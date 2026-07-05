@@ -7,7 +7,9 @@ import org.istiaqfuad.eventhub.booking.entity.BookingStatus;
 import org.istiaqfuad.eventhub.booking.repository.BookingRepository;
 import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
 import org.istiaqfuad.eventhub.event.repository.EventRepository;
+import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.istiaqfuad.eventhub.user.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,9 +46,12 @@ public class BookingService {
     }
 
     @Transactional(readOnly = true)
-    public BookingResponse get(Long id) {
+    public BookingResponse get(Long id, AuthenticatedUser caller) {
         Booking booking = bookings.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", id));
+        if (!caller.isAdmin() && !booking.getUser().getId().equals(caller.id())) {
+            throw new AccessDeniedException("Booking does not belong to the caller");
+        }
         return toResponse(booking);
     }
 

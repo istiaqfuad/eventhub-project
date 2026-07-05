@@ -26,6 +26,7 @@ public final class SecurityPaths {
             new PublicEndpoint(HttpMethod.POST, "/api/auth/logout"),
             new PublicEndpoint(HttpMethod.GET, "/api/events/**"),
             new PublicEndpoint(HttpMethod.GET, "/api/venues/**"),
+            new PublicEndpoint(HttpMethod.GET, "/api/reviews/**"),
             new PublicEndpoint(HttpMethod.GET, "/api/version"),
             new PublicEndpoint(null, "/error"),
             new PublicEndpoint(HttpMethod.GET, "/actuator/health"),

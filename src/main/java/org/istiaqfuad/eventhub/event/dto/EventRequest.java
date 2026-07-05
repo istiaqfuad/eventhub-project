@@ -16,7 +16,8 @@ import java.util.Set;
  * and {@code publicId} are server-owned and excluded.
  */
 public record EventRequest(
-        @NotNull(message = "organizerId is required")
+        // Optional: the owning organizer is derived from the authenticated caller.
+        // Only honored when an ADMIN supplies it to act on another organizer's behalf.
         Long organizerId,
 
         @NotBlank(message = "title is required")

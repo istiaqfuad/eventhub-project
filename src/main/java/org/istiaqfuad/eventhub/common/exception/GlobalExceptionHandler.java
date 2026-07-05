@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.istiaqfuad.eventhub.auth.service.InvalidRefreshTokenException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.password.CompromisedPasswordException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.HttpHeaders;
@@ -78,6 +79,19 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ProblemDetail handleAuthentication(AuthenticationException ex) {
         return problem(HttpStatus.UNAUTHORIZED, "Invalid email or password.", "INVALID_CREDENTIALS");
+    }
+
+    /**
+     * Authorization failure for an already-authenticated caller — a role gate
+     * ({@code @PreAuthorize}) or an ownership check in the service layer. Declared
+     * explicitly so it maps to 403 instead of being swallowed as 500 by the
+     * catch-all {@link Exception} handler; message is deliberately generic so it
+     * does not reveal whether the target resource exists.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return problem(HttpStatus.FORBIDDEN,
+                "You do not have permission to perform this action.", "ACCESS_DENIED");
     }
 
     /** Refresh token missing from store, expired, or replayed after rotation. */

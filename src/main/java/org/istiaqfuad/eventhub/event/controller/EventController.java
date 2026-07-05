@@ -4,7 +4,10 @@ import jakarta.validation.Valid;
 import org.istiaqfuad.eventhub.event.dto.EventRequest;
 import org.istiaqfuad.eventhub.event.dto.EventResponse;
 import org.istiaqfuad.eventhub.event.service.EventService;
+import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
+import org.istiaqfuad.eventhub.security.web.CurrentUser;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,8 +30,10 @@ public class EventController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EventResponse create(@Valid @RequestBody EventRequest request) {
-        return eventService.create(request);
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
+    public EventResponse create(@Valid @RequestBody EventRequest request,
+                                @CurrentUser AuthenticatedUser caller) {
+        return eventService.create(request, caller);
     }
 
     @GetMapping("/{id}")

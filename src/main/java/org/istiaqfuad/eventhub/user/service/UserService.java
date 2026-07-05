@@ -1,9 +1,11 @@
 package org.istiaqfuad.eventhub.user.service;
 
 import org.istiaqfuad.eventhub.common.exception.ResourceNotFoundException;
+import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.istiaqfuad.eventhub.user.dto.UserResponse;
 import org.istiaqfuad.eventhub.user.entity.User;
 import org.istiaqfuad.eventhub.user.repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +24,10 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse get(Long id) {
+    public UserResponse get(Long id, AuthenticatedUser caller) {
+        if (!caller.isAdmin() && !id.equals(caller.id())) {
+            throw new AccessDeniedException("Cannot read another user's profile");
+        }
         User user = users.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", id));
         return toResponse(user);

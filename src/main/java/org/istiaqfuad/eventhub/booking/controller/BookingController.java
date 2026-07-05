@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import org.istiaqfuad.eventhub.booking.dto.BookingRequest;
 import org.istiaqfuad.eventhub.booking.dto.BookingResponse;
 import org.istiaqfuad.eventhub.booking.service.BookingService;
+import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
+import org.istiaqfuad.eventhub.security.web.CurrentUser;
 import org.istiaqfuad.eventhub.security.web.CurrentUserId;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,7 +34,7 @@ public class BookingController {
     }
 
     @GetMapping("/{id}")
-    public BookingResponse get(@PathVariable Long id) {
-        return bookingService.get(id);
+    public BookingResponse get(@PathVariable Long id, @CurrentUser AuthenticatedUser caller) {
+        return bookingService.get(id, caller);
     }
 }

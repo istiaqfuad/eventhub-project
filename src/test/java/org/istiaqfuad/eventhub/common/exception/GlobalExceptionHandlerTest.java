@@ -5,8 +5,11 @@ import org.istiaqfuad.eventhub.auth.service.AuthService;
 import org.istiaqfuad.eventhub.config.WebMvcConfig;
 import org.istiaqfuad.eventhub.security.CookieProperties;
 import org.istiaqfuad.eventhub.security.JwtProperties;
+import org.istiaqfuad.eventhub.security.jwt.JwtAuthenticationToken;
 import org.istiaqfuad.eventhub.user.controller.UserController;
 import org.istiaqfuad.eventhub.user.service.UserService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -15,6 +18,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.password.CompromisedPasswordException;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -55,9 +61,23 @@ class GlobalExceptionHandlerTest {
     @MockitoBean
     JwtProperties jwtProperties;
 
+    // UserController.get takes a @CurrentUser argument; filters are disabled here, so
+    // place an authenticated caller in the context directly for the /users/* requests.
+    @BeforeEach
+    void authenticate() {
+        SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+        ctx.setAuthentication(JwtAuthenticationToken.authenticated(1L, AuthorityUtils.NO_AUTHORITIES));
+        SecurityContextHolder.setContext(ctx);
+    }
+
+    @AfterEach
+    void clearContext() {
+        SecurityContextHolder.clearContext();
+    }
+
     @Test
     void resourceNotFoundMapsTo404ProblemDetail() throws Exception {
-        given(userService.get(eq(999L))).willThrow(new ResourceNotFoundException("User", 999L));
+        given(userService.get(eq(999L), any())).willThrow(new ResourceNotFoundException("User", 999L));
 
         mvc.perform(get("/api/users/999").accept(V1))
                 .andExpect(status().isNotFound())

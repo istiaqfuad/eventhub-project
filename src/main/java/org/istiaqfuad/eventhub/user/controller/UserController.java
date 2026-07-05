@@ -1,5 +1,7 @@
 package org.istiaqfuad.eventhub.user.controller;
 
+import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
+import org.istiaqfuad.eventhub.security.web.CurrentUser;
 import org.istiaqfuad.eventhub.user.dto.UserResponse;
 import org.istiaqfuad.eventhub.user.service.UserService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +20,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public UserResponse get(@PathVariable Long id) {
-        return userService.get(id);
+    public UserResponse get(@PathVariable Long id, @CurrentUser AuthenticatedUser caller) {
+        return userService.get(id, caller);
     }
 }

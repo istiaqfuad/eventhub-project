@@ -9,8 +9,11 @@ import org.istiaqfuad.eventhub.event.entity.Tag;
 import org.istiaqfuad.eventhub.event.repository.CategoryRepository;
 import org.istiaqfuad.eventhub.event.repository.EventRepository;
 import org.istiaqfuad.eventhub.event.repository.TagRepository;
+import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
+import org.istiaqfuad.eventhub.user.entity.Organizer;
 import org.istiaqfuad.eventhub.user.repository.OrganizerRepository;
 import org.istiaqfuad.eventhub.venue.repository.VenueRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,9 +46,9 @@ public class EventService {
         this.tags = tags;
     }
 
-    public EventResponse create(EventRequest request) {
+    public EventResponse create(EventRequest request, AuthenticatedUser caller) {
         Event event = new Event();
-        event.setOrganizer(organizers.getReferenceById(request.organizerId()));
+        event.setOrganizer(resolveOrganizer(request, caller));
         event.setTitle(request.title());
         event.setDescription(request.description());
         if (request.categoryId() != null) {
@@ -70,6 +73,20 @@ public class EventService {
             }
         }
         return toResponse(events.save(event));
+    }
+
+    /**
+     * The owning organizer is the caller's own profile, never trusted from the
+     * request body — so a client cannot create events under another organizer.
+     * An ADMIN may act on behalf of any organizer by supplying {@code organizerId};
+     * when omitted, an admin who is also an organizer falls back to their own profile.
+     */
+    private Organizer resolveOrganizer(EventRequest request, AuthenticatedUser caller) {
+        if (caller.isAdmin() && request.organizerId() != null) {
+            return organizers.getReferenceById(request.organizerId());
+        }
+        return organizers.findByUserId(caller.id())
+                .orElseThrow(() -> new AccessDeniedException("Caller is not a registered organizer"));
     }
 
     @Transactional(readOnly = true)
