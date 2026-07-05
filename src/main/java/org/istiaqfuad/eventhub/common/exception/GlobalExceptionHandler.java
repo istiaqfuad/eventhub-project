@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.istiaqfuad.eventhub.auth.service.InvalidRefreshTokenException;
 import org.istiaqfuad.eventhub.booking.service.InvalidReservationException;
 import org.istiaqfuad.eventhub.booking.service.ReservationConflictException;
+import org.istiaqfuad.eventhub.payment.service.InvalidPaymentStateException;
+import org.istiaqfuad.eventhub.payment.service.PaymentGatewayException;
+import org.istiaqfuad.eventhub.payment.service.WebhookVerificationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
@@ -114,6 +117,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleOptimisticLock(OptimisticLockingFailureException ex) {
         return problem(HttpStatus.CONFLICT,
                 "The item was modified concurrently; please retry.", "RESERVATION_CONFLICT");
+    }
+
+    /** A booking is not in a payable state (e.g. already CONFIRMED). */
+    @ExceptionHandler(InvalidPaymentStateException.class)
+    public ProblemDetail handleInvalidPaymentState(InvalidPaymentStateException ex) {
+        return problem(HttpStatus.CONFLICT, ex.getMessage(), "PAYMENT_STATE");
+    }
+
+    /** An inbound webhook failed signature verification — reject without processing. */
+    @ExceptionHandler(WebhookVerificationException.class)
+    public ProblemDetail handleWebhookVerification(WebhookVerificationException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Webhook signature verification failed.", "INVALID_SIGNATURE");
+    }
+
+    /** The payment provider errored on an outbound call. */
+    @ExceptionHandler(PaymentGatewayException.class)
+    public ProblemDetail handlePaymentGateway(PaymentGatewayException ex) {
+        log.error("Payment gateway error", ex);
+        return problem(HttpStatus.BAD_GATEWAY,
+                "The payment provider is unavailable. Please try again.", "PAYMENT_GATEWAY");
     }
 
     /** Refresh token missing from store, expired, or replayed after rotation. */

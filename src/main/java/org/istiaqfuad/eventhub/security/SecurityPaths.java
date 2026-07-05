@@ -24,6 +24,8 @@ public final class SecurityPaths {
             new PublicEndpoint(HttpMethod.POST, "/api/auth/login"),
             new PublicEndpoint(HttpMethod.POST, "/api/auth/refresh"),
             new PublicEndpoint(HttpMethod.POST, "/api/auth/logout"),
+            // Stripe calls this with no bearer; it is authenticated by the webhook signature, not the filter chain.
+            new PublicEndpoint(HttpMethod.POST, "/api/payments/webhook"),
             new PublicEndpoint(HttpMethod.GET, "/api/events/**"),
             new PublicEndpoint(HttpMethod.GET, "/api/venues/**"),
             new PublicEndpoint(HttpMethod.GET, "/api/reviews/**"),

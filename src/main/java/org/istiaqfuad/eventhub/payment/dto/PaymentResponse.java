@@ -10,6 +10,7 @@ public record PaymentResponse(
         BigDecimal amount,
         PaymentStatus status,
         String providerRef,
+        String checkoutUrl,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {

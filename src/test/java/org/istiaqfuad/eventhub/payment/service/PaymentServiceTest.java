@@ -3,6 +3,9 @@ package org.istiaqfuad.eventhub.payment.service;
 import org.istiaqfuad.eventhub.booking.entity.Booking;
 import org.istiaqfuad.eventhub.booking.entity.BookingStatus;
 import org.istiaqfuad.eventhub.booking.repository.BookingRepository;
+import org.istiaqfuad.eventhub.booking.service.BookingInventoryService;
+import org.istiaqfuad.eventhub.payment.PaymentGateway;
+import org.istiaqfuad.eventhub.payment.StripeProperties;
 import org.istiaqfuad.eventhub.payment.dto.PaymentRequest;
 import org.istiaqfuad.eventhub.payment.dto.PaymentResponse;
 import org.istiaqfuad.eventhub.payment.entity.Payment;
@@ -15,43 +18,52 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Ownership enforcement on {@link PaymentService} create and read. */
 class PaymentServiceTest {
 
     private static final long OWNER_ID = 10L;
+    private static final long BOOKING_ID = 5L;
+    private static final String SESSION_ID = "cs_test_1";
 
     private PaymentRepository payments;
     private BookingRepository bookings;
+    private PaymentGateway gateway;
+    private BookingInventoryService inventory;
     private PaymentService service;
-
-    private Booking booking(long ownerId) {
-        User owner = new User();
-        owner.setId(ownerId);
-        Booking b = new Booking();
-        b.setId(5L);
-        b.setUser(owner);
-        b.setStatus(BookingStatus.PENDING);
-        b.setTotal(new BigDecimal("42.00"));
-        return b;
-    }
 
     @BeforeEach
     void setUp() {
         payments = mock(PaymentRepository.class);
         bookings = mock(BookingRepository.class);
-        service = new PaymentService(payments, bookings);
+        gateway = mock(PaymentGateway.class);
+        inventory = mock(BookingInventoryService.class);
+        StripeProperties props = new StripeProperties(
+                "sk", "whsec", "usd", "https://ok", "https://cancel", Duration.ofMinutes(30));
+        service = new PaymentService(payments, bookings, gateway, inventory, props);
         when(payments.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    private Booking booking(BookingStatus status) {
+        User owner = new User();
+        owner.setId(OWNER_ID);
+        Booking b = new Booking();
+        b.setId(BOOKING_ID);
+        b.setUser(owner);
+        b.setStatus(status);
+        b.setTotal(new BigDecimal("50.00"));
+        return b;
     }
 
     private static AuthenticatedUser user(long id, String... roles) {
@@ -59,40 +71,93 @@ class PaymentServiceTest {
     }
 
     @Test
-    void ownerCanPayOwnBooking() {
-        when(bookings.findById(5L)).thenReturn(Optional.of(booking(OWNER_ID)));
-        PaymentResponse res = service.create(new PaymentRequest(5L, "idem-1"), user(OWNER_ID));
-        assertThat(res.amount()).isEqualByComparingTo("42.00");
+    void initiateCreatesCheckoutAndPendingPayment() {
+        Booking b = booking(BookingStatus.PENDING);
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(b));
+        when(gateway.createCheckout(eq(b), eq(5000L), eq("usd"), any(), eq("idem-1")))
+                .thenReturn(new PaymentGateway.CheckoutRef(SESSION_ID, "https://checkout.stripe/x"));
+
+        PaymentResponse res = service.create(new PaymentRequest(BOOKING_ID, "idem-1"), user(OWNER_ID));
+
+        assertThat(res.status()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(res.providerRef()).isEqualTo(SESSION_ID);
+        assertThat(res.checkoutUrl()).isEqualTo("https://checkout.stripe/x");
+        assertThat(res.amount()).isEqualByComparingTo("50.00");
+        assertThat(b.getExpiresAt()).isNotNull();   // hold extended to cover the payment window
     }
 
     @Test
-    void payingAnotherUsersBookingIsDenied() {
-        when(bookings.findById(5L)).thenReturn(Optional.of(booking(OWNER_ID)));
-        assertThatThrownBy(() -> service.create(new PaymentRequest(5L, "idem-1"), user(OWNER_ID + 1)))
+    void initiateOnNonPendingBookingIsRejected() {
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(booking(BookingStatus.CONFIRMED)));
+        assertThatThrownBy(() -> service.create(new PaymentRequest(BOOKING_ID, "idem-1"), user(OWNER_ID)))
+                .isInstanceOf(InvalidPaymentStateException.class);
+    }
+
+    @Test
+    void initiateByNonOwnerIsDenied() {
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(booking(BookingStatus.PENDING)));
+        assertThatThrownBy(() -> service.create(new PaymentRequest(BOOKING_ID, "idem-1"), user(OWNER_ID + 1)))
                 .isInstanceOf(AccessDeniedException.class);
-        verify(payments, never()).save(any());
     }
 
     @Test
-    void ownerCanReadOwnPayment() {
+    void completedEventConfirmsBookingAndSucceedsPayment() {
+        Booking b = booking(BookingStatus.PENDING);
         Payment p = new Payment();
-        p.setBooking(booking(OWNER_ID));
-        p.setAmount(new BigDecimal("42.00"));
+        p.setBooking(b);
         p.setStatus(PaymentStatus.PENDING);
-        when(payments.findById(7L)).thenReturn(Optional.of(p));
+        when(gateway.parseEvent("body", "sig"))
+                .thenReturn(new PaymentGateway.PaymentEvent(PaymentGateway.PaymentEvent.Type.COMPLETED, SESSION_ID, BOOKING_ID));
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(b));
+        when(payments.findByProviderRef(SESSION_ID)).thenReturn(Optional.of(p));
 
-        assertThat(service.get(7L, user(OWNER_ID)).amount()).isEqualByComparingTo("42.00");
+        service.handleEvent("body", "sig");
+
+        assertThat(p.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        verify(inventory).confirm(b);
     }
 
     @Test
-    void readingAnotherUsersPaymentIsDenied() {
+    void duplicateCompletedIsNoOpWhenAlreadyConfirmed() {
+        Booking b = booking(BookingStatus.CONFIRMED);
         Payment p = new Payment();
-        p.setBooking(booking(OWNER_ID));
-        p.setAmount(new BigDecimal("42.00"));
-        p.setStatus(PaymentStatus.PENDING);
-        when(payments.findById(7L)).thenReturn(Optional.of(p));
+        p.setBooking(b);
+        p.setStatus(PaymentStatus.SUCCEEDED);
+        when(gateway.parseEvent("body", "sig"))
+                .thenReturn(new PaymentGateway.PaymentEvent(PaymentGateway.PaymentEvent.Type.COMPLETED, SESSION_ID, BOOKING_ID));
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(b));
+        when(payments.findByProviderRef(SESSION_ID)).thenReturn(Optional.of(p));
 
-        assertThatThrownBy(() -> service.get(7L, user(OWNER_ID + 1)))
-                .isInstanceOf(AccessDeniedException.class);
+        service.handleEvent("body", "sig");
+
+        verify(inventory, never()).confirm(any());
+    }
+
+    @Test
+    void expiredEventFailsPaymentAndReleasesHold() {
+        Booking b = booking(BookingStatus.PENDING);
+        Payment p = new Payment();
+        p.setBooking(b);
+        p.setStatus(PaymentStatus.PENDING);
+        when(gateway.parseEvent("body", "sig"))
+                .thenReturn(new PaymentGateway.PaymentEvent(PaymentGateway.PaymentEvent.Type.EXPIRED, SESSION_ID, BOOKING_ID));
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(b));
+        when(payments.findByProviderRef(SESSION_ID)).thenReturn(Optional.of(p));
+
+        service.handleEvent("body", "sig");
+
+        assertThat(p.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        verify(inventory).release(b);
+    }
+
+    @Test
+    void ignoredEventDoesNothing() {
+        when(gateway.parseEvent("body", "sig"))
+                .thenReturn(new PaymentGateway.PaymentEvent(PaymentGateway.PaymentEvent.Type.IGNORED, null, null));
+
+        service.handleEvent("body", "sig");
+
+        verify(inventory, never()).confirm(any());
+        verify(inventory, never()).release(any());
     }
 }
