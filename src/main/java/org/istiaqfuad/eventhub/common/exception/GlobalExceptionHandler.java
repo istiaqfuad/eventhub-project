@@ -5,7 +5,10 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.istiaqfuad.eventhub.auth.service.InvalidRefreshTokenException;
+import org.istiaqfuad.eventhub.booking.service.InvalidReservationException;
+import org.istiaqfuad.eventhub.booking.service.ReservationConflictException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.password.CompromisedPasswordException;
 import org.springframework.security.core.AuthenticationException;
@@ -92,6 +95,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         return problem(HttpStatus.FORBIDDEN,
                 "You do not have permission to perform this action.", "ACCESS_DENIED");
+    }
+
+    /** A structurally invalid booking request (wrong venue/event, duplicate seat). */
+    @ExceptionHandler(InvalidReservationException.class)
+    public ProblemDetail handleInvalidReservation(InvalidReservationException ex) {
+        return problem(HttpStatus.BAD_REQUEST, ex.getMessage(), "INVALID_RESERVATION");
+    }
+
+    /** Requested inventory is unavailable (seat taken or GA sold out). */
+    @ExceptionHandler(ReservationConflictException.class)
+    public ProblemDetail handleReservationConflict(ReservationConflictException ex) {
+        return problem(HttpStatus.CONFLICT, ex.getMessage(), "RESERVATION_CONFLICT");
+    }
+
+    /** Two buyers raced for the same seat; the optimistic version check lost. */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ProblemDetail handleOptimisticLock(OptimisticLockingFailureException ex) {
+        return problem(HttpStatus.CONFLICT,
+                "The item was modified concurrently; please retry.", "RESERVATION_CONFLICT");
     }
 
     /** Refresh token missing from store, expired, or replayed after rotation. */
