@@ -1,12 +1,7 @@
 package org.istiaqfuad.eventhub.booking.service;
 
 import org.istiaqfuad.eventhub.booking.entity.Booking;
-import org.istiaqfuad.eventhub.booking.entity.BookingItem;
-import org.istiaqfuad.eventhub.booking.entity.BookingStatus;
-import org.istiaqfuad.eventhub.booking.repository.BookingItemRepository;
 import org.istiaqfuad.eventhub.booking.repository.BookingRepository;
-import org.istiaqfuad.eventhub.event.repository.TicketTypeRepository;
-import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -18,9 +13,8 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
- * Releases the inventory held by {@code PENDING} bookings whose hold has expired:
- * seats HELD→FREE, GA quota returned, booking CANCELLED. Runs on a fixed delay;
- * the per-booking {@link #release} is also the basis for a future cancel endpoint.
+ * Cancels {@code PENDING} bookings whose hold has expired and releases their inventory via
+ * {@link BookingInventoryService}. Runs on a fixed delay.
  */
 @Service
 public class BookingExpiryService {
@@ -29,41 +23,21 @@ public class BookingExpiryService {
     private static final int BATCH = 200;
 
     private final BookingRepository bookings;
-    private final BookingItemRepository bookingItems;
-    private final TicketTypeRepository ticketTypes;
+    private final BookingInventoryService inventory;
 
-    public BookingExpiryService(BookingRepository bookings, BookingItemRepository bookingItems,
-                                TicketTypeRepository ticketTypes) {
+    public BookingExpiryService(BookingRepository bookings, BookingInventoryService inventory) {
         this.bookings = bookings;
-        this.bookingItems = bookingItems;
-        this.ticketTypes = ticketTypes;
+        this.inventory = inventory;
     }
 
-    /**
-     * Releases every expired hold in one transaction. Callable directly (tests, a
-     * future cancel endpoint); when driven by the scheduler the transaction is
-     * supplied by {@link #scheduledSweep()} — self-invocation would bypass this
-     * annotation's proxy, so the scheduled entry point carries its own.
-     */
+    /** Releases every expired hold in one transaction. */
     @Transactional
     public int sweep() {
         List<Booking> expired = bookings.findExpiredPending(OffsetDateTime.now(), PageRequest.of(0, BATCH));
         for (Booking booking : expired) {
-            release(booking);
+            inventory.release(booking);
         }
         return expired.size();
-    }
-
-    private void release(Booking booking) {
-        for (BookingItem item : bookingItems.findByBookingId(booking.getId())) {
-            if (item.getSeat() != null) {
-                item.getSeat().setStatus(SeatStatus.FREE);
-            } else if (item.getTicketType() != null) {
-                ticketTypes.release(item.getTicketType().getId(), 1);
-            }
-        }
-        booking.setStatus(BookingStatus.CANCELLED);
-        booking.setExpiresAt(null);
     }
 
     // @Transactional here (not only on sweep) so the scheduler's proxied call opens a
