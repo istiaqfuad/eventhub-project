@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.istiaqfuad.eventhub.booking.dto.BookingRequest;
 import org.istiaqfuad.eventhub.booking.dto.BookingResponse;
 import org.istiaqfuad.eventhub.booking.service.BookingService;
+import org.istiaqfuad.eventhub.security.web.CurrentUserId;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,9 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(path = "/bookings", version = "1")
 public class BookingController {
 
-    // TODO: replace with the authenticated principal once Spring Security is wired.
-    private static final Long PLACEHOLDER_USER_ID = 1L;
-
     private final BookingService bookingService;
 
     public BookingController(BookingService bookingService) {
@@ -28,8 +26,9 @@ public class BookingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BookingResponse create(@Valid @RequestBody BookingRequest request) {
-        return bookingService.create(request, PLACEHOLDER_USER_ID);
+    public BookingResponse create(@Valid @RequestBody BookingRequest request,
+                                  @CurrentUserId Long userId) {
+        return bookingService.create(request, userId);
     }
 
     @GetMapping("/{id}")
