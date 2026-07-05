@@ -12,6 +12,7 @@ import org.istiaqfuad.eventhub.event.entity.Event;
 import org.istiaqfuad.eventhub.user.entity.User;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.hibernate.annotations.UuidGenerator.Style.TIME;
@@ -44,6 +45,9 @@ public class Booking extends AuditableEntity {
     @ColumnDefault("0")
     @Column(name = "total", nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
+
+    @Column(name = "expires_at")
+    private OffsetDateTime expiresAt;
 
     @UuidGenerator(style = TIME)
     @Column(name = "public_id", nullable = false, updatable = false)

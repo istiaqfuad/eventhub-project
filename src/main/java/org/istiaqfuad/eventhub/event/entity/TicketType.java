@@ -3,6 +3,7 @@ package org.istiaqfuad.eventhub.event.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.istiaqfuad.eventhub.common.AuditableEntity;
@@ -32,6 +33,10 @@ public class TicketType extends AuditableEntity {
 
     @Column(name = "quota", nullable = false)
     private Integer quota;
+
+    @ColumnDefault("0")
+    @Column(name = "sold", nullable = false)
+    private Integer sold;
 
 
 }
