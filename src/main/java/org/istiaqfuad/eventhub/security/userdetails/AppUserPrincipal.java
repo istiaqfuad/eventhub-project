@@ -1,5 +1,7 @@
 package org.istiaqfuad.eventhub.security.userdetails;
 
+import lombok.Getter;
+import lombok.NonNull;
 import org.istiaqfuad.eventhub.user.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -15,10 +17,13 @@ import java.util.stream.Collectors;
  */
 public final class AppUserPrincipal implements UserDetails {
 
+    @Getter
     private final long userId;
+    @Getter
     private final String email;
     private final String passwordHash;
     private final boolean enabled;
+    @Getter
     private final Set<String> roleNames;
 
     public AppUserPrincipal(User user) {
@@ -31,20 +36,8 @@ public final class AppUserPrincipal implements UserDetails {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    public long getUserId() {
-        return userId;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public Set<String> getRoleNames() {
-        return roleNames;
-    }
-
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
+    public @NonNull Collection<? extends GrantedAuthority> getAuthorities() {
         return roleNames.stream()
                 .map(name -> new SimpleGrantedAuthority("ROLE_" + name))
                 .collect(Collectors.toUnmodifiableSet());
@@ -56,7 +49,7 @@ public final class AppUserPrincipal implements UserDetails {
     }
 
     @Override
-    public String getUsername() {
+    public @NonNull String getUsername() {
         return email;
     }
 
@@ -65,18 +58,4 @@ public final class AppUserPrincipal implements UserDetails {
         return enabled;
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
 }
