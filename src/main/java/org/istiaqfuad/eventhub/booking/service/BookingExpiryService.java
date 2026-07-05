@@ -39,6 +39,12 @@ public class BookingExpiryService {
         this.ticketTypes = ticketTypes;
     }
 
+    /**
+     * Releases every expired hold in one transaction. Callable directly (tests, a
+     * future cancel endpoint); when driven by the scheduler the transaction is
+     * supplied by {@link #scheduledSweep()} — self-invocation would bypass this
+     * annotation's proxy, so the scheduled entry point carries its own.
+     */
     @Transactional
     public int sweep() {
         List<Booking> expired = bookings.findExpiredPending(OffsetDateTime.now(), PageRequest.of(0, BATCH));
@@ -60,7 +66,11 @@ public class BookingExpiryService {
         booking.setExpiresAt(null);
     }
 
+    // @Transactional here (not only on sweep) so the scheduler's proxied call opens a
+    // transaction that spans the lazy loads and dirty-checked writes inside the sweep;
+    // a self-call to sweep() alone would run without one and fail on lazy access.
     @Scheduled(fixedDelayString = "PT60S")
+    @Transactional
     public void scheduledSweep() {
         int released = sweep();
         if (released > 0) {
