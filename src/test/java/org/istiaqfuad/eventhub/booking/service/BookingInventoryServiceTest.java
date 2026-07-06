@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -64,11 +65,13 @@ class BookingInventoryServiceTest {
     }
 
     @Test
-    void releaseFreesSeatsReturnsQuotaAndCancels() {
+    void releaseFreesSeatsReturnsQuotaDeletesItemsAndCancels() {
         service.release(booking);
 
         assertThat(seat.getStatus()).isEqualTo(SeatStatus.FREE);
         verify(ticketTypes).release(7L, 1);
+        // Items are deleted so the released seat can be booked again (uq_booking_item_seat).
+        verify(bookingItems).deleteAll(anyList());
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertThat(booking.getExpiresAt()).isNull();
     }
