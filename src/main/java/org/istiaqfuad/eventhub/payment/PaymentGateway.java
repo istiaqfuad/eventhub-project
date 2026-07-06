@@ -24,8 +24,18 @@ public interface PaymentGateway {
     record CheckoutRef(String sessionId, String url) {
     }
 
+    /**
+     * Refunds a payment. {@code providerRef} is the session id from checkout.
+     * {@code amountMinor} is the amount to refund in the smallest unit.
+     */
+    RefundRef refund(String providerRef, long amountMinor, String reason, String idempotencyKey);
+
+    /** A created refund: the provider refund id. */
+    record RefundRef(String refundId) {
+    }
+
     /** A verified webhook, reduced to what the domain needs. */
-    record PaymentEvent(Type type, String sessionId, Long bookingId) {
+    record PaymentEvent(Type type, String providerRef, Long bookingId) {
         public enum Type {
             /** Payment succeeded — confirm the booking. */
             COMPLETED,
@@ -33,6 +43,10 @@ public interface PaymentGateway {
             EXPIRED,
             /** Payment failed — release the hold. */
             FAILED,
+            /** Refund succeeded. */
+            REFUND_COMPLETED,
+            /** Refund failed. */
+            REFUND_FAILED,
             /** An event we don't act on. */
             IGNORED
         }

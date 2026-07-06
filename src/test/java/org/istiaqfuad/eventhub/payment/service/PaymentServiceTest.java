@@ -8,9 +8,14 @@ import org.istiaqfuad.eventhub.payment.PaymentGateway;
 import org.istiaqfuad.eventhub.payment.StripeProperties;
 import org.istiaqfuad.eventhub.payment.dto.PaymentRequest;
 import org.istiaqfuad.eventhub.payment.dto.PaymentResponse;
+import org.istiaqfuad.eventhub.payment.dto.RefundRequest;
+import org.istiaqfuad.eventhub.payment.dto.RefundResponse;
 import org.istiaqfuad.eventhub.payment.entity.Payment;
 import org.istiaqfuad.eventhub.payment.entity.PaymentStatus;
+import org.istiaqfuad.eventhub.payment.entity.Refund;
+import org.istiaqfuad.eventhub.payment.entity.RefundStatus;
 import org.istiaqfuad.eventhub.payment.repository.PaymentRepository;
+import org.istiaqfuad.eventhub.payment.repository.RefundRepository;
 import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.istiaqfuad.eventhub.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +43,7 @@ class PaymentServiceTest {
     private static final String SESSION_ID = "cs_test_1";
 
     private PaymentRepository payments;
+    private RefundRepository refunds;
     private BookingRepository bookings;
     private PaymentGateway gateway;
     private BookingInventoryService inventory;
@@ -46,13 +52,15 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         payments = mock(PaymentRepository.class);
+        refunds = mock(RefundRepository.class);
         bookings = mock(BookingRepository.class);
         gateway = mock(PaymentGateway.class);
         inventory = mock(BookingInventoryService.class);
         StripeProperties props = new StripeProperties(
                 "sk", "whsec", "usd", "https://ok", "https://cancel", Duration.ofMinutes(30));
-        service = new PaymentService(payments, bookings, gateway, inventory, props);
+        service = new PaymentService(payments, refunds, bookings, gateway, inventory, props);
         when(payments.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(refunds.save(any(Refund.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
     private Booking booking(BookingStatus status) {
@@ -159,5 +167,52 @@ class PaymentServiceTest {
 
         verify(inventory, never()).confirm(any());
         verify(inventory, never()).release(any());
+    }
+
+    @Test
+    void processRefundSucceeds() {
+        Booking b = booking(BookingStatus.CONFIRMED);
+        Payment p = new Payment();
+        p.setId(1L);
+        p.setBooking(b);
+        p.setAmount(new BigDecimal("50.00"));
+        p.setStatus(PaymentStatus.SUCCEEDED);
+        p.setProviderRef(SESSION_ID);
+        
+        when(payments.findById(1L)).thenReturn(Optional.of(p));
+        when(refunds.findByPaymentId(1L)).thenReturn(java.util.Collections.emptyList());
+        when(gateway.refund(eq(SESSION_ID), eq(2500L), eq("test reason"), eq("idem-2")))
+            .thenReturn(new PaymentGateway.RefundRef("re_test_1"));
+
+        RefundResponse res = service.processRefund(1L, new RefundRequest(new BigDecimal("25.00"), "test reason", "idem-2"), user(OWNER_ID));
+
+        assertThat(res.amount()).isEqualByComparingTo("25.00");
+        assertThat(res.status()).isEqualTo(RefundStatus.COMPLETED);
+    }
+
+    @Test
+    void refundCompletedEventUpdatesRefundStatus() {
+        Refund r = new Refund();
+        r.setStatus(RefundStatus.REQUESTED);
+        when(gateway.parseEvent("body", "sig"))
+                .thenReturn(new PaymentGateway.PaymentEvent(PaymentGateway.PaymentEvent.Type.REFUND_COMPLETED, "re_1", null));
+        when(refunds.findByProviderRef("re_1")).thenReturn(Optional.of(r));
+
+        service.handleEvent("body", "sig");
+
+        assertThat(r.getStatus()).isEqualTo(RefundStatus.COMPLETED);
+    }
+
+    @Test
+    void refundFailedEventUpdatesRefundStatus() {
+        Refund r = new Refund();
+        r.setStatus(RefundStatus.REQUESTED);
+        when(gateway.parseEvent("body", "sig"))
+                .thenReturn(new PaymentGateway.PaymentEvent(PaymentGateway.PaymentEvent.Type.REFUND_FAILED, "re_1", null));
+        when(refunds.findByProviderRef("re_1")).thenReturn(Optional.of(r));
+
+        service.handleEvent("body", "sig");
+
+        assertThat(r.getStatus()).isEqualTo(RefundStatus.FAILED);
     }
 }

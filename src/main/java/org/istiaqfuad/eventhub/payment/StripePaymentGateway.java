@@ -8,7 +8,9 @@ import com.stripe.model.Event;
 import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
+import com.stripe.model.Refund;
 import com.stripe.net.RequestOptions;
+import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.istiaqfuad.eventhub.booking.entity.Booking;
 import org.istiaqfuad.eventhub.payment.service.PaymentGatewayException;
@@ -67,6 +69,31 @@ public class StripePaymentGateway implements PaymentGateway {
     }
 
     @Override
+    public RefundRef refund(String providerRef, long amountMinor, String reason, String idempotencyKey) {
+        try {
+            Session session = client.v1().checkout().sessions().retrieve(providerRef);
+            String paymentIntentId = session.getPaymentIntent();
+            if (paymentIntentId == null) {
+                throw new PaymentGatewayException("Checkout session " + providerRef + " has no payment intent");
+            }
+
+            RefundCreateParams.Builder builder = RefundCreateParams.builder()
+                    .setPaymentIntent(paymentIntentId)
+                    .setAmount(amountMinor);
+            
+            if (reason != null && !reason.isBlank()) {
+                builder.putMetadata("reason", reason);
+            }
+
+            RequestOptions options = RequestOptions.builder().setIdempotencyKey(idempotencyKey).build();
+            Refund refund = client.v1().refunds().create(builder.build(), options);
+            return new RefundRef(refund.getId());
+        } catch (StripeException e) {
+            throw new PaymentGatewayException("Stripe refund failed", e);
+        }
+    }
+
+    @Override
     public PaymentEvent parseEvent(String payload, String signature) {
         Event event;
         try {
@@ -80,6 +107,7 @@ public class StripePaymentGateway implements PaymentGateway {
                     PaymentEvent.Type.COMPLETED;
             case "checkout.session.expired" -> PaymentEvent.Type.EXPIRED;
             case "checkout.session.async_payment_failed" -> PaymentEvent.Type.FAILED;
+            case "charge.refund.updated" -> PaymentEvent.Type.REFUND_COMPLETED; // Temporary mapping, will refine below based on object
             default -> PaymentEvent.Type.IGNORED;
         };
         if (type == PaymentEvent.Type.IGNORED) {
@@ -97,8 +125,18 @@ public class StripePaymentGateway implements PaymentGateway {
                         "Webhook payload could not be deserialized for " + event.getType(), e);
             }
         });
-        Session session = (Session) object;
-        Long bookingId = Long.valueOf(session.getMetadata().get(META_BOOKING_ID));
-        return new PaymentEvent(type, session.getId(), bookingId);
+        if (event.getType().equals("charge.refund.updated")) {
+            Refund refund = (Refund) object;
+            PaymentEvent.Type mappedType = switch (refund.getStatus()) {
+                case "succeeded" -> PaymentEvent.Type.REFUND_COMPLETED;
+                case "failed", "canceled" -> PaymentEvent.Type.REFUND_FAILED;
+                default -> PaymentEvent.Type.IGNORED;
+            };
+            return new PaymentEvent(mappedType, refund.getId(), null);
+        } else {
+            Session session = (Session) object;
+            Long bookingId = Long.valueOf(session.getMetadata().get(META_BOOKING_ID));
+            return new PaymentEvent(type, session.getId(), bookingId);
+        }
     }
 }

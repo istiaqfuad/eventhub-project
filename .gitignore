@@ -37,3 +37,10 @@ build/
 ### Local planning/spec artifacts (not part of the repo) ###
 docs/superpowers/
 /graphify-out
+/scratch
+
+## agent skills and config
+.agents/
+.claude/
+.junie/
+skills-lock.json

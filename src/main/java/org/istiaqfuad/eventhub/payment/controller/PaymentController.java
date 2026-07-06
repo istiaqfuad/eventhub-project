@@ -3,6 +3,8 @@ package org.istiaqfuad.eventhub.payment.controller;
 import jakarta.validation.Valid;
 import org.istiaqfuad.eventhub.payment.dto.PaymentRequest;
 import org.istiaqfuad.eventhub.payment.dto.PaymentResponse;
+import org.istiaqfuad.eventhub.payment.dto.RefundRequest;
+import org.istiaqfuad.eventhub.payment.dto.RefundResponse;
 import org.istiaqfuad.eventhub.payment.service.PaymentService;
 import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.istiaqfuad.eventhub.security.web.CurrentUser;
@@ -37,6 +39,14 @@ public class PaymentController {
     @GetMapping("/{id}")
     public PaymentResponse get(@PathVariable Long id, @CurrentUser AuthenticatedUser caller) {
         return paymentService.get(id, caller);
+    }
+
+    @PostMapping("/{id}/refunds")
+    @ResponseStatus(HttpStatus.CREATED)
+    public RefundResponse refund(@PathVariable Long id,
+                                 @Valid @RequestBody RefundRequest request,
+                                 @CurrentUser AuthenticatedUser caller) {
+        return paymentService.processRefund(id, request, caller);
     }
 
     /**

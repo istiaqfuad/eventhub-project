@@ -36,5 +36,7 @@ public class Refund extends AuditableEntity {
     @Column(name = "reason", length = 512)
     private String reason;
 
+    @Column(name = "provider_ref")
+    private String providerRef;
 
 }

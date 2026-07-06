@@ -9,9 +9,14 @@ import org.istiaqfuad.eventhub.payment.PaymentGateway;
 import org.istiaqfuad.eventhub.payment.StripeProperties;
 import org.istiaqfuad.eventhub.payment.dto.PaymentRequest;
 import org.istiaqfuad.eventhub.payment.dto.PaymentResponse;
+import org.istiaqfuad.eventhub.payment.dto.RefundRequest;
+import org.istiaqfuad.eventhub.payment.dto.RefundResponse;
 import org.istiaqfuad.eventhub.payment.entity.Payment;
 import org.istiaqfuad.eventhub.payment.entity.PaymentStatus;
+import org.istiaqfuad.eventhub.payment.entity.Refund;
+import org.istiaqfuad.eventhub.payment.entity.RefundStatus;
 import org.istiaqfuad.eventhub.payment.repository.PaymentRepository;
+import org.istiaqfuad.eventhub.payment.repository.RefundRepository;
 import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * Drives the payment lifecycle over a {@link PaymentGateway}. Initiation charges the booking's
@@ -36,14 +42,16 @@ public class PaymentService {
     private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository payments;
+    private final RefundRepository refunds;
     private final BookingRepository bookings;
     private final PaymentGateway gateway;
     private final BookingInventoryService inventory;
     private final StripeProperties stripeProperties;
 
-    public PaymentService(PaymentRepository payments, BookingRepository bookings, PaymentGateway gateway,
+    public PaymentService(PaymentRepository payments, RefundRepository refunds, BookingRepository bookings, PaymentGateway gateway,
                           BookingInventoryService inventory, StripeProperties stripeProperties) {
         this.payments = payments;
+        this.refunds = refunds;
         this.bookings = bookings;
         this.gateway = gateway;
         this.inventory = inventory;
@@ -85,12 +93,28 @@ public class PaymentService {
             return;
         }
 
-        Booking booking = bookings.findById(event.bookingId()).orElse(null);
-        if (booking == null) {
-            log.warn("Webhook for unknown booking {} (session {})", event.bookingId(), event.sessionId());
+        if (event.type() == PaymentGateway.PaymentEvent.Type.REFUND_COMPLETED || 
+            event.type() == PaymentGateway.PaymentEvent.Type.REFUND_FAILED) {
+            
+            Refund refund = refunds.findByProviderRef(event.providerRef()).orElse(null);
+            if (refund != null) {
+                if (event.type() == PaymentGateway.PaymentEvent.Type.REFUND_COMPLETED) {
+                    refund.setStatus(RefundStatus.COMPLETED);
+                } else {
+                    refund.setStatus(RefundStatus.FAILED);
+                }
+            } else {
+                log.warn("Webhook for unknown refund {}", event.providerRef());
+            }
             return;
         }
-        Payment payment = payments.findByProviderRef(event.sessionId()).orElse(null);
+
+        Booking booking = bookings.findById(event.bookingId()).orElse(null);
+        if (booking == null) {
+            log.warn("Webhook for unknown booking {} (session {})", event.bookingId(), event.providerRef());
+            return;
+        }
+        Payment payment = payments.findByProviderRef(event.providerRef()).orElse(null);
 
         switch (event.type()) {
             case COMPLETED -> {
@@ -133,5 +157,54 @@ public class PaymentService {
                 checkoutUrl,
                 payment.getCreatedAt(),
                 payment.getUpdatedAt());
+    }
+
+    public RefundResponse processRefund(Long paymentId, RefundRequest request, AuthenticatedUser caller) {
+        Payment payment = payments.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", paymentId));
+
+        if (!caller.isAdmin() && !payment.getBooking().getUser().getId().equals(caller.id())) {
+            throw new AccessDeniedException("Payment does not belong to the caller");
+        }
+
+        if (payment.getStatus() != PaymentStatus.SUCCEEDED) {
+            throw new InvalidPaymentStateException(
+                    "Payment " + paymentId + " cannot be refunded (status " + payment.getStatus() + ")");
+        }
+
+        List<Refund> existingRefunds = refunds.findByPaymentId(paymentId);
+        BigDecimal refundedAmount = existingRefunds.stream()
+                .filter(r -> r.getStatus() != RefundStatus.REJECTED)
+                .map(Refund::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        if (refundedAmount.add(request.amount()).compareTo(payment.getAmount()) > 0) {
+            throw new IllegalArgumentException("Refund amount exceeds available payment balance");
+        }
+
+        long amountMinor = request.amount().movePointRight(2).longValueExact();
+        PaymentGateway.RefundRef ref = gateway.refund(payment.getProviderRef(), amountMinor, request.reason(), request.idempotencyKey());
+
+        Refund refund = new Refund();
+        refund.setPayment(payment);
+        refund.setAmount(request.amount());
+        refund.setReason(request.reason());
+        refund.setProviderRef(ref.refundId());
+        // Standard Stripe refund creation is synchronous and succeeds if the refund object is returned.
+        refund.setStatus(RefundStatus.COMPLETED);
+
+        return toRefundResponse(refunds.save(refund));
+    }
+
+    private RefundResponse toRefundResponse(Refund refund) {
+        return new RefundResponse(
+                refund.getId(),
+                refund.getPayment().getId(),
+                refund.getAmount(),
+                refund.getStatus(),
+                refund.getReason(),
+                refund.getCreatedAt(),
+                refund.getUpdatedAt()
+        );
     }
 }
