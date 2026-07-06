@@ -33,7 +33,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
-        configurer.addPathPrefix("/api", HandlerTypePredicate.forAnnotation(RestController.class));
+        configurer.addPathPrefix("/api", HandlerTypePredicate.forAnnotation(RestController.class)
+                .and(HandlerTypePredicate.forBasePackage("org.istiaqfuad.eventhub")));
     }
 
     @Override

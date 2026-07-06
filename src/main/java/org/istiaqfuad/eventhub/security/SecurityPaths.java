@@ -32,5 +32,9 @@ public final class SecurityPaths {
             new PublicEndpoint(HttpMethod.GET, "/api/version"),
             new PublicEndpoint(null, "/error"),
             new PublicEndpoint(HttpMethod.GET, "/actuator/health"),
+            // OpenAPI / Swagger UI
+            new PublicEndpoint(HttpMethod.GET, "/v3/api-docs/**"),
+            new PublicEndpoint(HttpMethod.GET, "/swagger-ui/**"),
+            new PublicEndpoint(HttpMethod.GET, "/swagger-ui.html"),
     };
 }
