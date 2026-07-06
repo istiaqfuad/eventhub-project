@@ -1,9 +1,11 @@
 package org.istiaqfuad.eventhub.payment;
 
 import com.stripe.StripeClient;
+import com.stripe.exception.EventDataObjectDeserializationException;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
+import com.stripe.model.EventDataObjectDeserializer;
 import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
@@ -84,9 +86,17 @@ public class StripePaymentGateway implements PaymentGateway {
             return new PaymentEvent(PaymentEvent.Type.IGNORED, null, null);
         }
 
-        StripeObject object = event.getDataObjectDeserializer().getObject()
-                .orElseThrow(() -> new PaymentGatewayException(
-                        "Webhook payload could not be deserialized for " + event.getType(), null));
+        // getObject() is empty when the event's API version differs from the SDK's pinned
+        // version; deserializeUnsafe() maps it anyway (we only read id + metadata).
+        EventDataObjectDeserializer deserializer = event.getDataObjectDeserializer();
+        StripeObject object = deserializer.getObject().orElseGet(() -> {
+            try {
+                return deserializer.deserializeUnsafe();
+            } catch (EventDataObjectDeserializationException e) {
+                throw new PaymentGatewayException(
+                        "Webhook payload could not be deserialized for " + event.getType(), e);
+            }
+        });
         Session session = (Session) object;
         Long bookingId = Long.valueOf(session.getMetadata().get(META_BOOKING_ID));
         return new PaymentEvent(type, session.getId(), bookingId);
