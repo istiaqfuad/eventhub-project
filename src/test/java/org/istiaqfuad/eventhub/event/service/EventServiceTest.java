@@ -43,7 +43,7 @@ class EventServiceTest {
         events = mock(EventRepository.class);
         organizers = mock(OrganizerRepository.class);
         service = new EventService(events, organizers,
-                mock(CategoryRepository.class), mock(VenueRepository.class), mock(TagRepository.class));
+                mock(CategoryRepository.class), mock(VenueRepository.class), mock(TagRepository.class), mock(org.istiaqfuad.eventhub.event.repository.TicketTypeRepository.class));
         when(events.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 
