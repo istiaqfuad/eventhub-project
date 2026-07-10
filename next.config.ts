@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/backend/:path*",
-        destination: "http://localhost:8080/api/v1/:path*", // Assuming v1 is the base path
+        destination: "http://localhost:8080/api/:path*", // Removed v1 based on SecurityPaths
       },
     ];
   },
