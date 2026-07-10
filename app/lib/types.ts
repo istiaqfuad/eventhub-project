@@ -97,7 +97,7 @@ export interface BookingResponse {
   id: number;
   userId: number;
   eventId: number;
-  totalAmount: number;
+  total: number;
   status: BookingStatus;
   createdAt: string;
   updatedAt: string;

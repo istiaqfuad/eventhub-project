@@ -1,114 +1,158 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import Navbar from "../../components/Navbar";
+import { ArrowLeft, Ticket } from "lucide-react";
+import Navbar from "../../components/Navbar/Navbar";
 import { useBooking } from "../../hooks/useBooking";
 import { useAuthStore } from "../../providers/auth-store-provider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
-export default function BookingDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const hydrated = useAuthStore((s) => s.hydrated);
+export default function BookingDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const { data: booking, isLoading, error } = useBooking(resolvedParams.id);
+  const { isAuthenticated, hydrated } = useAuthStore((s) => s);
   const router = useRouter();
-  const { data: booking, isLoading, error } = useBooking(isAuthenticated ? id : null);
 
   useEffect(() => {
     if (hydrated && !isAuthenticated) {
-      router.replace(`/login?redirect=/bookings/${id}`);
+      router.push("/login?redirect=/bookings");
     }
-  }, [hydrated, isAuthenticated, router, id]);
+  }, [hydrated, isAuthenticated, router]);
+
+  if (!hydrated || isLoading) {
+    return (
+      <main className="min-h-screen bg-[#0b0e14] text-white">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] text-gray-400">
+          Loading ticket details...
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !booking) {
+    return (
+      <main className="min-h-screen bg-[#0b0e14] text-white">
+        <Navbar />
+        <div className="container mx-auto px-6 pt-[100px] text-center">
+          <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg inline-block">
+            Failed to load booking. It may not exist or you don't have access.
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const isConfirmed = booking.status === "CONFIRMED";
+  const isPending = booking.status === "PENDING";
+  const isCancelled = booking.status === "CANCELLED";
+  const isExpired = booking.status === "EXPIRED";
+
+  const statusColorClass = isConfirmed 
+    ? "text-[#00e676]" 
+    : isPending 
+      ? "text-[#ffea00]" 
+      : isCancelled || isExpired 
+        ? "text-[#ff3366]" 
+        : "text-gray-400";
 
   return (
-    <main>
+    <main className="min-h-screen bg-[#0b0e14] text-white">
       <Navbar />
-      <div className="container" style={{ paddingTop: "100px", minHeight: "100vh", paddingBottom: "3rem" }}>
+      <div className="container mx-auto px-6 pt-[100px] pb-12">
         <Link
           href="/bookings"
-          style={{
-            color: "var(--text-secondary)",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1rem",
-          }}
+          className="inline-flex items-center gap-2 mb-6 text-gray-400 hover:text-[#00f0ff] transition-colors"
         >
-          <ArrowLeft size={16} /> All bookings
+          <ArrowLeft size={16} /> Back to My Tickets
         </Link>
+        <h1 className="text-3xl font-bold mb-6">Booking #{booking.id}</h1>
 
-        {isLoading || !hydrated ? (
-          <div style={{ color: "var(--text-secondary)" }}>Loading...</div>
-        ) : error || !booking ? (
-          <div className="errorBox">Booking not found or you do not have access.</div>
-        ) : (
-          <>
-            <h1 style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>Booking #{booking.id}</h1>
-            <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
-              Status:{" "}
-              <strong
-                style={{
-                  color:
-                    booking.status === "CONFIRMED"
-                      ? "var(--success)"
-                      : booking.status === "PENDING"
-                        ? "var(--warning)"
-                        : "inherit",
-                }}
-              >
-                {booking.status}
-              </strong>
-            </p>
-
-            <div
-              style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--glass-border)",
-                borderRadius: "var(--radius-lg)",
-                padding: "1.5rem",
-                maxWidth: 560,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Event</span>
-                <Link href={`/events/${booking.eventId}`} className="text-gradient">
-                  #{booking.eventId}
-                </Link>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="bg-[#151a23] border border-white/10 rounded-2xl p-8 shadow-xl">
+            <h2 className="text-xl font-semibold mb-6 pb-4 border-b border-white/10">Order Details</h2>
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Status</span>
+                <span className={`font-bold ${statusColorClass}`}>{booking.status}</span>
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-                <span style={{ color: "var(--text-secondary)" }}>Total</span>
-                <span style={{ fontWeight: 700 }}>${Number(booking.totalAmount).toFixed(2)}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Event ID</span>
+                <span className="font-semibold text-white">#{booking.eventId}</span>
               </div>
-              <div style={{ marginTop: "1.5rem" }}>
-                <h3 style={{ marginBottom: "0.75rem" }}>Line items</h3>
-                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                  {booking.items?.map((item) => (
-                    <li
-                      key={item.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        fontSize: "0.95rem",
-                        padding: "0.5rem 0",
-                        borderBottom: "1px solid var(--glass-border)",
-                      }}
-                    >
-                      <span>
-                        {item.seatId
-                          ? `Seat #${item.seatId}`
-                          : item.ticketTypeId
-                            ? `Ticket type #${item.ticketTypeId}`
-                            : "Item"}
-                      </span>
-                      <span>${Number(item.price).toFixed(2)}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Date Ordered</span>
+                <span className="font-semibold text-white">
+                  {new Date(booking.createdAt).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center pt-4 border-t border-white/10 mt-2">
+                <span className="text-gray-300 font-semibold">Total</span>
+                <span className="font-bold text-2xl text-[#00f0ff]">${Number(booking.total).toFixed(2)}</span>
               </div>
             </div>
-          </>
-        )}
+
+            <div className="mt-8 pt-8 border-t border-white/10">
+              <h3 className="font-semibold mb-4 text-gray-300">Line Items</h3>
+              {booking.items.length === 0 ? (
+                <div className="text-gray-500">No items in this booking.</div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {booking.items.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      className="flex justify-between items-center bg-[#202632] p-4 rounded-xl border border-white/5"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Ticket size={16} className="text-gray-400" />
+                        <div>
+                          <div className="font-medium text-sm">
+                            {item.seatId ? "Reserved Seat" : "General Admission"}
+                          </div>
+                          <div className="text-xs text-gray-500 font-mono">
+                            ID: {item.id}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-semibold text-white">${Number(item.price).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="bg-gradient-to-br from-[#1a2130] to-[#151a23] border border-[#00f0ff]/20 rounded-2xl p-8 relative overflow-hidden h-full flex flex-col items-center justify-center min-h-[300px]">
+              {isConfirmed ? (
+                <>
+                  <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00f0ff] to-[#7000ff]" />
+                  <div className="w-48 h-48 bg-white p-4 rounded-xl shadow-[0_10px_30px_rgba(0,240,255,0.2)] mb-6 flex items-center justify-center border-4 border-dashed border-gray-200">
+                    <div className="text-center">
+                      <Ticket size={64} className="mx-auto text-black mb-2" />
+                      <div className="text-black font-black uppercase text-xl">VALID TICKET</div>
+                    </div>
+                  </div>
+                  <p className="text-gray-300 text-center font-medium">
+                    Present this QR code (simulated) at the venue for entry.
+                  </p>
+                </>
+              ) : (
+                <div className="text-center text-gray-400 max-w-sm">
+                  <Ticket size={48} className="mx-auto mb-4 opacity-50" />
+                  <h3 className="text-xl font-semibold mb-2 text-white">Tickets Unavailable</h3>
+                  <p>
+                    {isPending
+                      ? "Your booking is pending payment."
+                      : "This booking was cancelled or expired. No tickets were issued."}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );
