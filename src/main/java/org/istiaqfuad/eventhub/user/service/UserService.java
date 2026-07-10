@@ -33,6 +33,13 @@ public class UserService {
         return toResponse(user);
     }
 
+    @Transactional(readOnly = true)
+    public UserResponse me(AuthenticatedUser caller) {
+        User user = users.findById(caller.id())
+                .orElseThrow(() -> new ResourceNotFoundException("User", caller.id()));
+        return toResponse(user);
+    }
+
     private UserResponse toResponse(User user) {
         Set<String> roleNames = user.getRoles().stream()
                 .map(role -> role.getName().name())

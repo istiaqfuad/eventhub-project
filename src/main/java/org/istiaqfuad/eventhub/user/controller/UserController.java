@@ -19,6 +19,12 @@ public class UserController {
         this.userService = userService;
     }
 
+    /** Current caller profile — used by the SPA after login/refresh when TokenResponse has no user body. */
+    @GetMapping("/me")
+    public UserResponse me(@CurrentUser AuthenticatedUser caller) {
+        return userService.me(caller);
+    }
+
     @GetMapping("/{id}")
     public UserResponse get(@PathVariable Long id, @CurrentUser AuthenticatedUser caller) {
         return userService.get(id, caller);

@@ -136,6 +136,13 @@ public class BookingService {
         return toResponse(booking, bookingItems.findByBookingId(booking.getId()));
     }
 
+    @Transactional(readOnly = true)
+    public List<BookingResponse> listForUser(Long userId) {
+        return bookings.findByUserId(userId).stream()
+                .map(b -> toResponse(b, bookingItems.findByBookingId(b.getId())))
+                .toList();
+    }
+
     private BookingResponse toResponse(Booking booking, List<BookingItem> items) {
         List<BookingItemResponse> itemResponses = items.stream()
                 .map(i -> new BookingItemResponse(

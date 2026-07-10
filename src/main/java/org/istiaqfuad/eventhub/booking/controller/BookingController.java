@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping(path = "/bookings", version = "1")
 public class BookingController {
@@ -31,6 +33,11 @@ public class BookingController {
     public BookingResponse create(@Valid @RequestBody BookingRequest request,
                                   @CurrentUserId Long userId) {
         return bookingService.create(request, userId);
+    }
+
+    @GetMapping
+    public List<BookingResponse> listMine(@CurrentUserId Long userId) {
+        return bookingService.listForUser(userId);
     }
 
     @GetMapping("/{id}")
