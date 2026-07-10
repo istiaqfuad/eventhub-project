@@ -38,6 +38,11 @@ public class VenueController {
         return venueService.get(id);
     }
 
+    @GetMapping("/{id}/layout")
+    public org.istiaqfuad.eventhub.venue.dto.VenueLayoutResponse getLayout(@PathVariable Long id) {
+        return venueService.getLayout(id);
+    }
+
     @GetMapping
     public List<VenueResponse> list() {
         return venueService.list();

@@ -41,6 +41,11 @@ public class EventController {
         return eventService.get(id);
     }
 
+    @GetMapping("/{id}/tickets")
+    public List<org.istiaqfuad.eventhub.event.dto.TicketTypeResponse> getTicketTypes(@PathVariable Long id) {
+        return eventService.getTicketTypes(id);
+    }
+
     @GetMapping
     public List<EventResponse> list() {
         return eventService.list();

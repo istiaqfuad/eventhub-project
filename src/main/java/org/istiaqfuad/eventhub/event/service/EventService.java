@@ -36,14 +36,31 @@ public class EventService {
     private final CategoryRepository categories;
     private final VenueRepository venues;
     private final TagRepository tags;
+    private final org.istiaqfuad.eventhub.event.repository.TicketTypeRepository ticketTypes;
 
     public EventService(EventRepository events, OrganizerRepository organizers,
-                        CategoryRepository categories, VenueRepository venues, TagRepository tags) {
+                        CategoryRepository categories, VenueRepository venues, TagRepository tags,
+                        org.istiaqfuad.eventhub.event.repository.TicketTypeRepository ticketTypes) {
         this.events = events;
         this.organizers = organizers;
         this.categories = categories;
         this.venues = venues;
         this.tags = tags;
+        this.ticketTypes = ticketTypes;
+    }
+
+    @Transactional(readOnly = true)
+    public List<org.istiaqfuad.eventhub.event.dto.TicketTypeResponse> getTicketTypes(Long eventId) {
+        return ticketTypes.findByEventId(eventId).stream()
+                .map(t -> new org.istiaqfuad.eventhub.event.dto.TicketTypeResponse(
+                        t.getId(),
+                        t.getEvent().getId(),
+                        t.getName(),
+                        t.getPrice(),
+                        t.getQuota(),
+                        t.getCreatedAt(),
+                        t.getUpdatedAt()
+                )).toList();
     }
 
     public EventResponse create(EventRequest request, AuthenticatedUser caller) {
