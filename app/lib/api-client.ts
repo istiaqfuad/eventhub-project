@@ -4,7 +4,9 @@ import { useAuthStore } from "../providers/auth-store-provider";
 // We use the Next.js API rewrite we configured
 const apiClient = axios.create({
   baseURL: "/api/backend",
-  withCredentials: true, // Crucial for refresh cookies
+  withCredentials: true, // Crucial for refresh cookies and CSRF
+  xsrfCookieName: "XSRF-TOKEN",
+  xsrfHeaderName: "X-XSRF-TOKEN",
   headers: {
     "Content-Type": "application/json",
   },
