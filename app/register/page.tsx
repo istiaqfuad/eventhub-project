@@ -3,105 +3,79 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Ticket } from "lucide-react";
-import styles from "../auth.module.css";
-import { useRegister } from "../hooks/useAuth";
+import { getProblemDetail, useRegister } from "../hooks/useAuth";
 
 export default function RegisterPage() {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("CUSTOMER");
   const { mutate: register, isPending, error } = useRegister();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    register({ name, email, password, role });
+    register({ email, password });
   };
 
   return (
-    <div className={styles.authContainer}>
-      <div className={styles.authCard}>
-        <div className={styles.authHeader}>
-          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--accent-primary)' }}>
+    <div className="flex items-center justify-center min-h-screen bg-[#0b0e14] text-white p-4">
+      <div className="w-full max-w-md bg-[#151a23] rounded-2xl p-8 border border-white/10">
+        <div className="text-center mb-8">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 mb-4 text-[#00f0ff]"
+          >
             <Ticket size={24} />
-            <span style={{ fontWeight: 800, fontSize: '1.25rem' }}>EventHub</span>
+            <span className="font-extrabold text-xl">EventHub</span>
           </Link>
-          <h1>Create Account</h1>
-          <p>Join the best platform for live entertainment.</p>
+          <h1 className="text-3xl font-bold mb-2">Create Account</h1>
+          <p className="text-gray-400">Join the best platform for live entertainment.</p>
         </div>
 
-        {error && (
-          <div className={styles.errorBox}>
-            Registration failed. Email might be in use or data is invalid.
-          </div>
-        )}
+        {error && <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg mb-6">{getProblemDetail(error)}</div>}
 
-        <form onSubmit={handleSubmit}>
-          <div className={styles.formGroup}>
-            <label htmlFor="name">Full Name</label>
-            <input
-              type="text"
-              id="name"
-              className={styles.inputField}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              placeholder="John Doe"
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="email">Email Address</label>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <label htmlFor="email" className="font-semibold text-sm">Email Address</label>
             <input
               type="email"
               id="email"
-              className={styles.inputField}
+              className="w-full bg-[#202632] border border-white/10 rounded-lg p-3 text-white focus:border-[#00f0ff] focus:outline-none transition-colors"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
               placeholder="you@example.com"
             />
           </div>
 
-          <div className={styles.formGroup}>
-            <label htmlFor="password">Password</label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="password" className="font-semibold text-sm">Password</label>
             <input
               type="password"
               id="password"
-              className={styles.inputField}
+              className="w-full bg-[#202632] border border-white/10 rounded-lg p-3 text-white focus:border-[#00f0ff] focus:outline-none transition-colors"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="••••••••"
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
               minLength={8}
             />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label htmlFor="role">I am a...</label>
-            <select 
-              id="role"
-              className={styles.inputField}
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              style={{ appearance: 'none', backgroundColor: 'rgba(0,0,0,0.4)' }}
-            >
-              <option value="CUSTOMER">Fan / Customer</option>
-              <option value="ORGANIZER">Event Organizer</option>
-            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              Must be 8–72 characters and not appear in known data breaches.
+            </p>
           </div>
 
           <button
             type="submit"
-            className={`btn btn-primary ${styles.submitBtn}`}
+            className="w-full bg-gradient-to-r from-[#00f0ff] to-[#7000ff] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-[0_4px_15px_rgba(112,0,255,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-50"
             disabled={isPending}
           >
             {isPending ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
-        <div className={styles.authFooter}>
-          Already have an account? <Link href="/login">Sign in</Link>
+        <div className="text-center mt-8 text-gray-400 text-sm">
+          Already have an account? <Link href="/login" className="text-[#00f0ff] hover:underline">Sign in</Link>
         </div>
       </div>
     </div>

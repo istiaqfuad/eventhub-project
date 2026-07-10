@@ -2,200 +2,296 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, MapPin, Ticket } from "lucide-react";
 import Navbar from "../../../components/Navbar";
 import { useEvent } from "../../../hooks/useEvents";
-import { useTicketTypes, useVenueLayout, SeatResponse } from "../../../hooks/useBooking";
+import {
+  buildBookingItems,
+  useCreateBooking,
+  useCreatePayment,
+  useTicketTypes,
+  useVenueLayout,
+} from "../../../hooks/useBooking";
+import type { SeatResponse } from "../../../lib/types";
 import InteractiveSeatMap from "../../../components/SeatMap/InteractiveSeatMap";
+import { useAuthStore } from "../../../providers/auth-store-provider";
+import { getProblemDetail } from "../../../lib/api-client";
 
 export default function BookingPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const { data: event, isLoading: isLoadingEvent } = useEvent(resolvedParams.id);
-  const { data: ticketTypes, isLoading: isLoadingTickets } = useTicketTypes(resolvedParams.id);
-  
-  const { data: layout, isLoading: isLoadingLayout } = useVenueLayout(event?.venueId || "");
+  const eventId = resolvedParams.id;
+  const router = useRouter();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hydrated = useAuthStore((s) => s.hydrated);
 
-  // State to track selected seats for RESERVED sections
-  // Maps Seat ID to an object with details for the cart
-  const [selectedSeatsMap, setSelectedSeatsMap] = useState<Map<number, { seat: SeatResponse, sectionName: string, price: number }>>(new Map());
+  const { data: event, isLoading: isLoadingEvent } = useEvent(eventId);
+  const { data: ticketTypes, isLoading: isLoadingTickets } = useTicketTypes(eventId);
+  const {
+    data: layout,
+    isLoading: isLoadingLayout,
+    refetch: refetchLayout,
+  } = useVenueLayout(event?.venueId);
 
-  // State to track GA ticket quantities (maps TicketType ID to quantity)
+  const createBooking = useCreateBooking();
+  const createPayment = useCreatePayment();
+
+  const [selectedSeatsMap, setSelectedSeatsMap] = useState<
+    Map<number, { seat: SeatResponse; sectionName: string; price: number }>
+  >(new Map());
   const [gaQuantities, setGaQuantities] = useState<Map<number, number>>(new Map());
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  if (isLoadingEvent || isLoadingTickets) {
+  if (isLoadingEvent || isLoadingTickets || !hydrated) {
     return (
-      <main>
+      <main className="min-h-screen bg-[#0b0e14]">
         <Navbar />
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'var(--text-secondary)' }}>
+        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] text-gray-400">
           Loading booking engine...
         </div>
       </main>
     );
   }
 
-  if (!event) return null;
+  if (!event) {
+    return (
+      <main className="min-h-screen bg-[#0b0e14]">
+        <Navbar />
+        <div className="container mx-auto px-6 pt-[100px]">
+          <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg">Event not found.</div>
+          <Link href="/events" className="inline-block mt-4 bg-gradient-to-r from-[#00f0ff] to-[#7000ff] text-white font-semibold py-2 px-6 rounded-lg hover:shadow-[0_4px_15px_rgba(112,0,255,0.4)] hover:-translate-y-0.5 transition-all">
+            Back to Events
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   const handleSeatToggle = (seat: SeatResponse, sectionName: string, price: number) => {
-    setSelectedSeatsMap(prev => {
-      const newMap = new Map(prev);
-      if (newMap.has(seat.id)) {
-        newMap.delete(seat.id);
+    setSelectedSeatsMap((prev) => {
+      const next = new Map(prev);
+      if (next.has(seat.id)) {
+        next.delete(seat.id);
       } else {
-        newMap.set(seat.id, { seat, sectionName, price });
+        next.set(seat.id, { seat, sectionName, price });
       }
-      return newMap;
+      return next;
     });
   };
 
   const handleGaQuantityChange = (ticketId: number, quantity: number) => {
-    setGaQuantities(prev => {
-      const newMap = new Map(prev);
-      if (quantity === 0) {
-        newMap.delete(ticketId);
-      } else {
-        newMap.set(ticketId, quantity);
-      }
-      return newMap;
+    setGaQuantities((prev) => {
+      const next = new Map(prev);
+      if (quantity === 0) next.delete(ticketId);
+      else next.set(ticketId, quantity);
+      return next;
     });
   };
 
-  // Calculate Order Total
   let totalAmount = 0;
-  
-  // Add GA tickets to total
   gaQuantities.forEach((quantity, ticketId) => {
-    const ticket = ticketTypes?.find(t => t.id === ticketId);
-    if (ticket) totalAmount += ticket.price * quantity;
+    const ticket = ticketTypes?.find((t) => t.id === ticketId);
+    if (ticket) totalAmount += Number(ticket.price) * quantity;
   });
-
-  // Add Reserved Seats to total
-  selectedSeatsMap.forEach(item => {
+  selectedSeatsMap.forEach((item) => {
     totalAmount += item.price;
   });
 
-  const isCartEmpty = totalAmount === 0;
+  const isCartEmpty = totalAmount === 0 && selectedSeatsMap.size === 0 && gaQuantities.size === 0;
+  const isCheckingOut = createBooking.isPending || createPayment.isPending;
+
+  const handleCheckout = async () => {
+    setCheckoutError(null);
+
+    if (!isAuthenticated) {
+      router.push(`/login?redirect=/events/${event.id}/book`);
+      return;
+    }
+
+    const items = buildBookingItems([...selectedSeatsMap.keys()], gaQuantities);
+    if (items.length === 0) {
+      setCheckoutError("Select at least one ticket or seat.");
+      return;
+    }
+
+    try {
+      const booking = await createBooking.mutateAsync({
+        eventId: event.id,
+        items,
+      });
+
+      sessionStorage.setItem("lastBookingId", String(booking.id));
+
+      const payment = await createPayment.mutateAsync({
+        bookingId: booking.id,
+        idempotencyKey: crypto.randomUUID(),
+      });
+
+      if (payment.checkoutUrl) {
+        window.location.href = payment.checkoutUrl;
+        return;
+      }
+      setCheckoutError("Payment created but no checkout URL was returned.");
+    } catch (err) {
+      setCheckoutError(getProblemDetail(err));
+      await refetchLayout();
+    }
+  };
 
   return (
-    <main>
+    <main className="min-h-screen bg-[#0b0e14] text-white">
       <Navbar />
-      
-      <div className="container" style={{ paddingTop: '100px', minHeight: '100vh', paddingBottom: 'var(--space-2xl)' }}>
-        <div style={{ marginBottom: 'var(--space-xl)' }}>
-          <Link href={`/events/${resolvedParams.id}`} style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+
+      <div className="container mx-auto px-6 pt-[100px] pb-12">
+        <div className="mb-8">
+          <Link
+            href={`/events/${event.id}`}
+            className="inline-flex items-center gap-2 mb-4 text-gray-400 hover:text-[#00f0ff] transition-colors"
+          >
             <ArrowLeft size={16} /> Back to Event Details
           </Link>
-          <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>Select Tickets</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>{event.title}</p>
+          <h1 className="text-4xl font-bold mb-2">Select Tickets</h1>
+          <p className="text-gray-400 text-lg">{event.title}</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 'var(--space-2xl)' }}>
-          {/* Main Booking Area */}
-          <div>
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}>
-              <h2 style={{ marginBottom: '1rem' }}>General Admission Tickets</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-12">
+          <div className="flex flex-col gap-8">
+            <div className="bg-[#151a23] border border-white/10 rounded-2xl p-8">
+              <h2 className="text-2xl font-bold mb-4">General Admission Tickets</h2>
               {ticketTypes && ticketTypes.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {ticketTypes.map(ticket => (
-                    <div key={ticket.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', background: 'var(--bg-tertiary)' }}>
+                <div className="flex flex-col gap-4">
+                  {ticketTypes.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="flex justify-between items-center p-4 border border-white/10 rounded-xl bg-[#202632]"
+                    >
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{ticket.name}</div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>${ticket.price}</div>
+                        <div className="font-semibold text-lg">{ticket.name}</div>
+                        <div className="text-gray-400 text-sm mt-1">
+                          ${Number(ticket.price).toFixed(2)}
+                          {ticket.quota != null && (
+                            <span className="ml-2">· {ticket.quota} available</span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <select 
-                          className="input-field" 
-                          style={{ width: '80px', padding: '0.5rem' }}
-                          value={gaQuantities.get(ticket.id) || 0}
-                          onChange={(e) => handleGaQuantityChange(ticket.id, parseInt(e.target.value))}
-                        >
-                          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                            <option key={num} value={num}>{num}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <select
+                        className="w-20 p-2 bg-[#151a23] text-white border border-white/10 rounded-lg focus:border-[#00f0ff] focus:outline-none"
+                        value={gaQuantities.get(ticket.id) || 0}
+                        onChange={(e) =>
+                          handleGaQuantityChange(ticket.id, parseInt(e.target.value, 10))
+                        }
+                      >
+                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                          <option key={num} value={num}>
+                            {num}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ color: 'var(--text-secondary)' }}>No ticket types available.</div>
+                <div className="text-gray-400">No ticket types available.</div>
               )}
             </div>
 
             {event.venueId && (
-              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h2>Venue Layout</h2>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <MapPin size={14} /> {event.city}
+              <div className="bg-[#151a23] border border-white/10 rounded-2xl p-8">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Venue Layout</h2>
+                  <span className="text-sm text-gray-400 flex items-center gap-2">
+                    <MapPin size={14} /> {event.city || "Venue"}
                   </span>
                 </div>
-                
+
                 {isLoadingLayout ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>Loading Seat Map...</div>
+                  <div className="p-12 text-center text-gray-400">
+                    Loading Seat Map...
+                  </div>
                 ) : layout ? (
-                  <InteractiveSeatMap 
-                    sections={layout.sections} 
+                  <InteractiveSeatMap
+                    sections={layout.sections}
                     selectedSeats={new Set(selectedSeatsMap.keys())}
                     onSeatToggle={handleSeatToggle}
                   />
                 ) : (
-                  <div style={{ color: 'var(--text-secondary)' }}>Venue layout unavailable.</div>
+                  <div className="text-gray-400">Venue layout unavailable.</div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Checkout Sidebar */}
           <div>
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-xl)', position: 'sticky', top: '100px' }}>
-              <h2 style={{ marginBottom: '1.5rem', fontSize: '1.5rem' }}>Order Summary</h2>
-              
+            <div className="bg-[#151a23] border border-white/10 rounded-2xl p-8 sticky top-[100px] shadow-xl">
+              <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
+
               {isCartEmpty ? (
-                <div style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem 0', borderBottom: '1px solid var(--glass-border)', marginBottom: '1.5rem' }}>
+                <div className="text-gray-400 text-center py-8 border-b border-white/10 mb-6">
                   No tickets selected yet.
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
-                  
-                  {/* List GA Tickets */}
+                <div className="flex flex-col gap-3 mb-6 pb-6 border-b border-white/10">
                   {Array.from(gaQuantities.entries()).map(([ticketId, quantity]) => {
-                    const ticket = ticketTypes?.find(t => t.id === ticketId);
+                    const ticket = ticketTypes?.find((t) => t.id === ticketId);
                     if (!ticket) return null;
                     return (
-                      <div key={`ga-${ticketId}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span>{quantity}x {ticket.name}</span>
-                        <span>${(ticket.price * quantity).toFixed(2)}</span>
+                      <div
+                        key={`ga-${ticketId}`}
+                        className="flex justify-between text-sm"
+                      >
+                        <span>
+                          {quantity}x {ticket.name}
+                        </span>
+                        <span className="font-medium">${(Number(ticket.price) * quantity).toFixed(2)}</span>
                       </div>
                     );
                   })}
 
-                  {/* List Reserved Seats */}
                   {Array.from(selectedSeatsMap.values()).map(({ seat, sectionName, price }) => (
-                    <div key={`seat-${seat.id}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                      <span>
-                        <Ticket size={12} style={{ display: 'inline', marginRight: '4px' }}/>
-                        {sectionName} - Row {seat.rowLabel} Seat {seat.colNumber}
+                    <div
+                      key={`seat-${seat.id}`}
+                      className="flex justify-between text-sm"
+                    >
+                      <span className="flex items-center gap-1.5 text-gray-300">
+                        <Ticket size={12} className="text-[#00f0ff]" />
+                        {sectionName} · Row {seat.rowLabel} Seat {seat.colNumber}
                       </span>
-                      <span>${price.toFixed(2)}</span>
+                      <span className="font-medium text-white">${price.toFixed(2)}</span>
                     </div>
                   ))}
-
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: 700 }}>
+              <div className="flex justify-between mb-6 text-xl font-bold">
                 <span>Total</span>
-                <span>${totalAmount.toFixed(2)}</span>
+                <span className="text-[#00f0ff]">${totalAmount.toFixed(2)}</span>
               </div>
 
-              <button 
-                className={`btn ${isCartEmpty ? 'btn-secondary' : 'btn-primary'}`} 
-                style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} 
-                disabled={isCartEmpty}
-                onClick={() => alert("Stripe Checkout coming next!")}
+              {checkoutError && (
+                <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg mb-4 text-sm">
+                  {checkoutError}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all ${
+                  isCartEmpty 
+                    ? "bg-[#202632] text-gray-500 cursor-not-allowed" 
+                    : "bg-gradient-to-r from-[#00f0ff] to-[#7000ff] text-white hover:shadow-[0_4px_20px_rgba(112,0,255,0.4)] hover:-translate-y-1"
+                }`}
+                disabled={isCartEmpty || isCheckingOut}
+                onClick={handleCheckout}
               >
-                Proceed to Checkout
+                {isCheckingOut
+                  ? "Starting checkout..."
+                  : !isAuthenticated
+                    ? "Log in to Checkout"
+                    : "Proceed to Checkout"}
               </button>
+              <p className="text-center text-xs text-gray-500 mt-4 font-medium">
+                Seats are held while you pay. Secure checkout via Stripe.
+              </p>
             </div>
           </div>
         </div>

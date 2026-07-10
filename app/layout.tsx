@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "./providers/query-provider";
 import { AuthStoreProvider } from "./providers/auth-store-provider";
+import SessionRestore from "./components/SessionRestore";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({
       <body className={inter.variable}>
         <QueryProvider>
           <AuthStoreProvider>
+            <SessionRestore />
             {children}
           </AuthStoreProvider>
         </QueryProvider>

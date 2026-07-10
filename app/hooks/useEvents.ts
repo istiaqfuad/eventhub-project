@@ -1,44 +1,28 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import apiClient from "../lib/api-client";
+import type { EventResponse } from "../lib/types";
 
-export interface EventResponse {
-  id: number;
-  publicId: string;
-  organizerId: number;
-  title: string;
-  description: string;
-  categoryId: number;
-  venueId: number;
-  city: string;
-  latitude: number;
-  longitude: number;
-  startsAt: string;
-  endsAt: string;
-  status: "DRAFT" | "PUBLISHED" | "CANCELLED" | "COMPLETED";
-  highDemand: boolean;
-  imageUrls: string[];
-  tagIds: number[];
-  createdAt: string;
-  updatedAt: string;
-}
+export type { EventResponse };
 
 export const useEvents = () => {
   return useQuery<EventResponse[]>({
     queryKey: ["events"],
     queryFn: async () => {
-      const { data } = await apiClient.get("/events");
+      const { data } = await apiClient.get<EventResponse[]>("/events");
       return data;
     },
   });
 };
 
-export const useEvent = (id: string) => {
+export const useEvent = (id: string | number) => {
   return useQuery<EventResponse>({
-    queryKey: ["events", id],
+    queryKey: ["events", String(id)],
     queryFn: async () => {
-      const { data } = await apiClient.get(`/events/${id}`);
+      const { data } = await apiClient.get<EventResponse>(`/events/${id}`);
       return data;
     },
-    enabled: !!id,
+    enabled: !!id && id !== "undefined",
   });
 };

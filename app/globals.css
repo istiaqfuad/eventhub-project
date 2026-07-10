@@ -150,3 +150,11 @@ button {
   border: none;
   outline: none;
 }
+
+.errorBox {
+  background: rgba(255, 51, 102, 0.12);
+  border: 1px solid rgba(255, 51, 102, 0.35);
+  color: #ff8fab;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-md);
+}
