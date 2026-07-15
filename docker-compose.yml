@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: eventhub-db
+    environment:
+      POSTGRES_USER: eventhub_user
+      POSTGRES_PASSWORD: eventhub_password
+      POSTGRES_DB: eventhub_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eventhub_user -d eventhub_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./eventhub
+      dockerfile: Dockerfile
+    container_name: eventhub-backend
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eventhub_db
+      - SPRING_DATASOURCE_USERNAME=eventhub_user
+      - SPRING_DATASOURCE_PASSWORD=eventhub_password
+      - JWT_SECRET=3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b
+      - FRONTEND_URL=http://213.136.80.53
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./eventhub-frontend
+      dockerfile: Dockerfile
+    container_name: eventhub-frontend
+    environment:
+      - BACKEND_URL=http://backend:8080
+      - NEXT_PUBLIC_API_URL=http://213.136.80.53/api/backend
+    ports:
+      - "3001:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.eventhub-frontend.rule=Host(`213.136.80.53`)"
+      - "traefik.http.routers.eventhub-frontend.entrypoints=web"
+      - "traefik.http.services.eventhub-frontend.loadbalancer.server.port=3000"
+      - "traefik.docker.network=dokploy-network"
+
+networks:
+  dokploy-network:
+    external: true
+volumes:
+  pgdata:
