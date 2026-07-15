@@ -3,8 +3,8 @@ services:
     image: postgres:16
     container_name: eventhub-db
     environment:
-      POSTGRES_USER: eventhub_user
-      POSTGRES_PASSWORD: eventhub_password
+      POSTGRES_USER: ${DB_USER:-eventhub_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: eventhub_db
     ports:
       - "5432:5432"
@@ -24,9 +24,9 @@ services:
     container_name: eventhub-backend
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eventhub_db
-      - SPRING_DATASOURCE_USERNAME=eventhub_user
-      - SPRING_DATASOURCE_PASSWORD=eventhub_password
-      - JWT_SECRET=3cfa76ef14937c1c0ea519f8fc057a80fcd04a7420f8e8bcd0a7567c272e007b
+      - SPRING_DATASOURCE_USERNAME=${DB_USER:-eventhub_user}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=http://213.136.80.53
     ports:
       - "8080:8080"
