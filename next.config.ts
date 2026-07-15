@@ -1,16 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   async rewrites() {
+    const backendUrl = process.env.BACKEND_URL || "http://localhost:8080";
     return [
-      // Matches refresh cookie Path=/api/auth set by the backend
       {
         source: "/api/auth/:path*",
-        destination: "http://localhost:8080/api/auth/:path*",
+        destination: `${backendUrl}/api/auth/:path*`,
       },
       {
         source: "/api/backend/:path*",
-        destination: "http://localhost:8080/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },
