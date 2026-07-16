@@ -48,15 +48,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    networks:
-      - default
-      - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.eventhub-frontend.rule=Host(`213.136.80.53`)"
-      - "traefik.http.routers.eventhub-frontend.entrypoints=web"
-      - "traefik.http.services.eventhub-frontend.loadbalancer.server.port=3000"
-      - "traefik.docker.network=dokploy-network"
 
 networks:
   dokploy-network:
