@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: ${DB_USER:-eventhub_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: eventhub_db
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
