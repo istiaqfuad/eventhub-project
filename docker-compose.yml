@@ -1,33 +1,13 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: eventhub-db
-    environment:
-      POSTGRES_USER: ${DB_USER:-eventhub_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: eventhub_db
-    ports:
-      - "127.0.0.1:5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U eventhub_user -d eventhub_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    networks:
-      - dokploy-network
-
   backend:
     build:
       context: ./eventhub
       dockerfile: Dockerfile
     container_name: eventhub-backend
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/eventhub_db
-      - SPRING_DATASOURCE_USERNAME=${DB_USER:-eventhub_user}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_DATASOURCE_URL=${DATABASE_URL}
+      - SPRING_DATASOURCE_USERNAME=${DATABASE_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${DATABASE_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ALLOWED_ORIGINS=${FRONTEND_URL}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
@@ -36,9 +16,7 @@ services:
       - STRIPE_CANCEL_URL=${FRONTEND_URL}/booking/cancel
     ports:
       - "8080:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
+
     restart: unless-stopped
     networks:
       - dokploy-network
@@ -62,5 +40,3 @@ services:
 networks:
   dokploy-network:
     external: true
-volumes:
-  pgdata:
