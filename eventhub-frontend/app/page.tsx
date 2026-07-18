@@ -1,24 +1,44 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Calendar, MapPin, Ticket } from "lucide-react";
+import { ArrowRight, Calendar, MapPin, Ticket, Search, Zap, Shield, Clock } from "lucide-react";
 import styles from "./page.module.css";
 import Navbar from "./components/Navbar";
 import { useEvents } from "./hooks/useEvents";
 
 function statusLabel(status: string) {
   switch (status) {
-    case "ON_SALE":
-      return "On Sale";
-    case "DRAFT":
-      return "Draft";
-    case "CLOSED":
-      return "Closed";
-    case "CANCELLED":
-      return "Cancelled";
-    default:
-      return status;
+    case "ON_SALE": return "On Sale";
+    case "DRAFT": return "Draft";
+    case "CLOSED": return "Closed";
+    case "CANCELLED": return "Cancelled";
+    default: return status;
   }
+}
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "ON_SALE": return "badge badge-success";
+    case "CANCELLED": return "badge badge-danger";
+    default: return "badge badge-neutral";
+  }
+}
+
+function EventSkeleton() {
+  return (
+    <div className={styles.eventCard} style={{ pointerEvents: "none" }}>
+      <div className="skeleton" style={{ height: 200 }} />
+      <div style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+        <div className="skeleton" style={{ height: 20, width: "70%" }} />
+        <div className="skeleton" style={{ height: 14, width: "45%" }} />
+        <div className="skeleton" style={{ height: 14, width: "55%" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.5rem" }}>
+          <div className="skeleton" style={{ height: 24, width: 60, borderRadius: 99 }} />
+          <div className="skeleton" style={{ height: 32, width: 90 }} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Home() {
@@ -28,52 +48,59 @@ export default function Home() {
     <main>
       <Navbar />
 
+      {/* ── Hero ── */}
       <section className={styles.hero}>
-        <div className={styles.heroBackground}></div>
-        <div className={styles.heroGlow}></div>
+        <div className={styles.heroBg} />
+        <div className={styles.heroGlow1} />
+        <div className={styles.heroGlow2} />
 
         <div className={styles.heroContent}>
-          <h1 className={styles.title}>
-            Experience Live Events <br />
-            <span className="text-gradient">Like Never Before</span>
+          <span className={styles.heroPill}>
+            <Zap size={13} /> Live Events Platform
+          </span>
+          <h1 className={styles.heroTitle}>
+            Find Your Next<br />
+            <span className="text-gradient">Unforgettable Experience</span>
           </h1>
-          <p className={styles.subtitle}>
-            Secure your spot at the most anticipated concerts, sports matches, and exclusive
-            events. Fast, reliable, and premium ticketing.
+          <p className={styles.heroSubtitle}>
+            Discover concerts, sports, theatre, and more. Book tickets instantly with secure, seamless checkout.
           </p>
-          <div className={styles.ctaGroup}>
-            <Link href="#events" className={`btn btn-primary ${styles.btnLarge}`}>
-              <Ticket size={20} />
-              Browse Events
+
+          <div className={styles.heroSearch}>
+            <Search size={18} className={styles.heroSearchIcon} />
+            <Link href="/events" className={styles.heroSearchInput}>
+              Search events, artists, venues...
             </Link>
-            <Link href="/about" className={`btn btn-secondary ${styles.btnLarge}`}>
-              Learn More
+            <Link href="/events" className={`btn btn-primary ${styles.heroSearchBtn}`}>
+              Explore
             </Link>
+          </div>
+
+          <div className={styles.heroTrustRow}>
+            <span className={styles.heroTrustItem}><Shield size={14} /> Secure Checkout</span>
+            <span className={styles.heroTrustItem}><Clock size={14} /> Instant Confirmation</span>
+            <span className={styles.heroTrustItem}><Ticket size={14} /> Digital Tickets</span>
           </div>
         </div>
       </section>
 
+      {/* ── Trending Events ── */}
       <section id="events" className={`${styles.featured} container`}>
         <div className={styles.sectionHeader}>
-          <h2>Trending Now</h2>
-          <Link
-            href="/events"
-            className="text-gradient"
-            style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600 }}
-          >
-            View All <ArrowRight size={18} />
+          <div>
+            <h2 className={styles.sectionTitle}>Trending Now</h2>
+            <p style={{ color: "var(--text-secondary)", marginBottom: 0, fontSize: "0.95rem" }}>
+              The most popular upcoming events
+            </p>
+          </div>
+          <Link href="/events" className={`btn btn-secondary`} style={{ fontSize: "0.875rem", gap: "0.4rem" }}>
+            View All <ArrowRight size={16} />
           </Link>
         </div>
 
         {isLoading ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "var(--space-2xl) 0",
-              color: "var(--text-secondary)",
-            }}
-          >
-            Loading events...
+          <div className={styles.eventsGrid}>
+            {[...Array(6)].map((_, i) => <EventSkeleton key={i} />)}
           </div>
         ) : error ? (
           <div className="errorBox" style={{ textAlign: "center" }}>
@@ -83,83 +110,58 @@ export default function Home() {
           <div className={styles.eventsGrid}>
             {events.slice(0, 6).map((event) => {
               const eventDate = new Date(event.startsAt);
-              const formattedDate = eventDate.toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              });
+              const formattedDate = eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              const formattedTime = eventDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
               return (
-                <div key={event.id} className={styles.eventCard}>
-                  <div className={styles.eventImagePlaceholder}>
+                <Link key={event.id} href={`/events/${event.id}`} className={styles.eventCard}>
+                  <div className={styles.eventImage}>
                     {event.imageUrls && event.imageUrls.length > 0 ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={event.imageUrls[0]}
-                        alt={event.title}
-                        style={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          position: "absolute",
-                        }}
-                      />
+                      <img src={event.imageUrls[0]} alt={event.title} className={styles.eventImg} />
                     ) : (
-                      <span style={{ opacity: 0.1, transform: "scale(5)" }}>
-                        <Ticket />
-                      </span>
+                      <div className={styles.eventImgPlaceholder}>
+                        <Ticket size={36} style={{ opacity: 0.2 }} />
+                      </div>
                     )}
-                    <span className={styles.eventDate}>
-                      <Calendar
-                        size={14}
-                        style={{ display: "inline", marginRight: "4px", verticalAlign: "text-bottom" }}
-                      />
+                    <div className={styles.eventImageOverlay} />
+                    <span className={styles.eventDateBadge}>
+                      <Calendar size={12} />
                       {formattedDate}
                     </span>
+                    {event.highDemand && (
+                      <span className={styles.eventHotBadge}>🔥 Hot</span>
+                    )}
                   </div>
-                  <div className={styles.eventContent}>
+
+                  <div className={styles.eventBody}>
                     <h3 className={styles.eventTitle}>{event.title}</h3>
-                    <div className={styles.eventVenue}>
-                      <MapPin size={14} /> {event.city || "Various Locations"}
+                    <div className={styles.eventMeta}>
+                      <span className={styles.eventMetaItem}>
+                        <MapPin size={13} /> {event.city || "Various Locations"}
+                      </span>
+                      <span className={styles.eventMetaItem}>
+                        <Clock size={13} /> {formattedTime}
+                      </span>
                     </div>
                     <div className={styles.eventFooter}>
-                      <div className={styles.eventPrice}>
-                        {event.highDemand && (
-                          <span
-                            style={{
-                              color: "var(--warning)",
-                              fontSize: "0.8rem",
-                              marginRight: "0.5rem",
-                            }}
-                          >
-                            🔥 High Demand
-                          </span>
-                        )}
-                        <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                          {statusLabel(event.status)}
-                        </span>
-                      </div>
-                      <Link
-                        href={`/events/${event.id}`}
-                        className="btn btn-secondary"
-                        style={{ padding: "0.25rem 0.75rem", fontSize: "0.875rem" }}
-                      >
-                        Get Tickets
-                      </Link>
+                      <span className={statusBadgeClass(event.status)}>
+                        {statusLabel(event.status)}
+                      </span>
+                      <span className={styles.eventCta}>
+                        Get Tickets <ArrowRight size={14} />
+                      </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>
         ) : (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "var(--space-2xl) 0",
-              color: "var(--text-secondary)",
-            }}
-          >
-            No upcoming events found. Check back soon!
+          <div className={styles.emptyState}>
+            <Ticket size={48} style={{ opacity: 0.2, marginBottom: "1rem" }} />
+            <h3>No upcoming events</h3>
+            <p>New events are added regularly. Check back soon!</p>
           </div>
         )}
       </section>

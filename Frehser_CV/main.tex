@@ -1,0 +1,231 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\usepackage{graphicx}
+% Render all contact icons at a uniform height (FA solid vs brand glyphs differ in size)
+\newcommand{\contacticon}[1]{\raisebox{-0.15em}{\resizebox{!}{0.95em}{#1}}}
+% glyphtounicode is pdftex-only; skip under xelatex/lualatex
+\ifdefined\pdfgentounicode
+  \input{glyphtounicode}
+\fi
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.7in}
+\addtolength{\textheight}{1.4in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-9pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-7pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\ifdefined\pdfgentounicode
+  \pdfgentounicode=1
+\fi
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-6pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+\begin{center}
+    \textbf{\Huge Istiaqur Rahman Fuad}
+\end{center}
+
+\begin{center}
+\small
+\contacticon{\faMapMarker*} \, Jamalpur $|$
+\contacticon{\faEnvelope} \, \href{mailto:istiaqurrahmanfuad@gmail.com}{istiaqurrahmanfuad@gmail.com} $|$
+\contacticon{\faPhone*} \, +880 1865-863271 \\ \vspace{2pt}
+\contacticon{\faLinkedin} \, \href{https://www.linkedin.com/in/istiaqfuad}{istiaqfuad} $|$
+\contacticon{\faGithub} \, \href{https://github.com/istiaqfuad}{istiaqfuad} $|$
+\contacticon{\faGlobe} \, \href{https://istiaqfuad.me}{istiaqfuad.me}
+\end{center}
+
+%-----------SUMMARY-----------
+\section{Summary}
+\small{Computer science undergraduate and aspiring backend software engineer specializing in scalable systems and APIs. Comfortable architecting end-to-end web applications and integrating modern AI features as secondary capabilities. Enjoys building robust infrastructure, optimizing databases, and open-sourcing the work.}
+\vspace{2pt}
+
+ %-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Languages}{: Java, Python, TypeScript, C++, C, SQL} \\
+     \textbf{Technologies \& Tools}{: Spring Boot, Next.js, FastAPI, PostgreSQL, Redis, RabbitMQ, Docker, Prisma, Stripe, Git} \\
+     \textbf{AI / ML}{: PyTorch, Hugging Face, LoRA, LLMs, LangChain, LangSmith, Vector Databases}
+    }}
+ \end{itemize}
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+
+    \resumeSubheading
+      {Advanced Machine Intelligence Research (AMIR) Lab}{Feb 2026 -- Present}
+      {Research Assistant Intern}{Remote}
+      \resumeItemListStart
+        \resumeItem{Curated and published \textbf{bangla-english-banglish-pairs}, a 2.4M-pair trilingual contrastive dataset (Bangla / Banglish [romanized Bengali] / English) on Hugging Face for low-resource NLP research.}
+        \resumeItem{Trained and open-sourced \textbf{TriBne-e5-small}, a trilingual sentence-embedding model for retrieval over code-mixed Bengali text.}
+      \resumeItemListEnd
+
+    \resumeSubheading
+      {Devcore Technologies}{Feb 2025 -- Apr 2025}
+      {Full Stack Developer Intern}{Remote}
+      \resumeItemListStart
+        \resumeItem{Architected a modular admin dashboard and end-to-end type-safe backend APIs using tRPC and Prisma for an e-commerce platform with a 1,000+ product catalog.}
+        \resumeItem{Developed responsive, server-rendered storefront pages with Next.js App Router, improving cross-device usability.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {University of Rajshahi}{Jan 2022 -- Expected 2026}
+      {B.Sc. in Computer Science and Engineering}{CGPA: 3.58/4.00}
+      \resumeItemListStart
+        \resumeItem{\textbf{Relevant Coursework:} Data Structures \& Algorithms, Object-Oriented Programming, Database Management Systems, Operating Systems, Software Engineering, Artificial Intelligence, Machine Learning}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+  \resumeSubHeadingListStart
+    \resumeProjectHeading
+        {\textbf{EventHub} $|$ \emph{\href{https://eventhub.irflab.tech/}{\color{blue}Live}} $|$ \emph{\href{https://github.com/istiaqfuad/eventhub-project}{\color{blue}GitHub}}}{}
+
+      \resumeItemListStart
+        \resumeItem{\textbf{Tools used:} Java, Spring Boot, PostgreSQL, Redis, RabbitMQ, Next.js, Docker, Stripe}
+        \resumeItem{Engineered a scalable full-stack ticketing platform (Spring Boot, Next.js) containerized with Docker Compose.}
+        \resumeItem{Implemented interactive visual seat selection with Redis holds, Stripe Checkout, and RabbitMQ for async ticket processing.}
+      \resumeItemListEnd
+
+    \resumeProjectHeading
+        {\textbf{LegalBuddy} $|$ \emph{\href{https://legalbuddy.irflab.tech/}{\color{blue}Live}} $|$ \emph{\href{https://github.com/istiaqfuad/legal-buddy}{\color{blue}GitHub}}}{}
+
+      \resumeItemListStart
+        \resumeItem{\textbf{Tools used:} Python, FastAPI, Next.js, Qdrant, sentence-transformers, LLM, Docker}
+        \resumeItem{Built a retrieval-augmented generation (RAG) system over Bangladesh legal acts: a FastAPI backend retrieves grounded statute sections from Qdrant and generates cited answers with LLM in a Next.js chat UI.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------RESEARCH AND PUBLICATIONS-----------
+\section{Research \& Publications}
+  \resumeSubHeadingListStart
+    \resumeProjectHeading
+        {\textbf{A Trilingual Contrastive Corpus and Parameter-Efficient Recipe for Romanized Bengali Retrieval}}{}
+
+      \resumeItemListStart
+        \resumeItem{\textbf{First author}; under review at \textit{Language Resources and Evaluation} (Springer Nature), 2026. \hfill \emph{\href{https://huggingface.co/spaces/istiaqfuad/triBne-e5-small-demo}{\color{blue}Demo}} $|$ \emph{\href{https://github.com/istiaqfuad/triBne-e5}{\color{blue}GitHub}}}
+        \resumeItem{LoRA fine-tuned multilingual-e5-small (1\% parameter update, MNRL loss) on a self-built 2.4M-pair trilingual (Bangla / Banglish / English) contrastive corpus for Banglish and cross-script retrieval.}
+        \resumeItem{Reached state-of-the-art on Banglish-spelling and cross-script retrieval, lifting cross-script MRR@10 from 0.50 to 0.98 over the base model and beating BGE-M3, LaBSE, and Embedding Gemma.}
+      \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------Courses and Certifications -----------
+\section{Courses and Certifications}
+\begin{itemize}[leftmargin=0.15in]
+    \small{
+        \item{Machine Learning Specialization -- Stanford University $|$ DeepLearning.AI (Jul 2023). \href{https://www.coursera.org/account/accomplishments/specialization/certificate/Q6NXEZKR8TMA}{\color{blue}certificate}}
+        \vspace{-4pt}
+        \item{Deep Learning Specialization -- Stanford University $|$ DeepLearning.AI (Oct 2023). \href{https://www.coursera.org/account/accomplishments/specialization/certificate/B5AQT8YMBQU8}{\color{blue}certificate}}
+    }
+\end{itemize}
+
+%-----------Achievements and Activities-----------
+\section{Achievements and Activities}
+\begin{itemize}[leftmargin=0.15in]
+    \small{
+        \item{\textbf{Award of Merit} -- International Blockchain Olympiad (Oct 2024). \href{https://drive.google.com/file/d/1JBwTW0jXm-M77g4E_a-D2NaJUHX4EyMg/view?usp=sharing}{\color{blue}certificate}}
+        \vspace{-4pt}
+        \item{\textbf{SDG-9 Silver Medal} -- International Blockchain Olympiad (Oct 2022). \href{https://drive.google.com/file/d/1r5VAn4hBUb7fEbmXG34dBFAzPjVzIfWr/view?usp=sharing}{\color{blue}certificate}}
+    }
+\end{itemize}
+\end{document}

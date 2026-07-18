@@ -1,98 +1,141 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Ticket } from "lucide-react";
+import { ArrowLeft, Calendar, ExternalLink, Ticket } from "lucide-react";
 import Navbar from "../components/Navbar/Navbar";
 import { useMyBookings } from "../hooks/useBooking";
 import { useAuthStore } from "../providers/auth-store-provider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+function statusBadgeClass(status: string) {
+  switch (status) {
+    case "CONFIRMED": return "badge badge-success";
+    case "PENDING": return "badge badge-warning";
+    case "CANCELLED":
+    case "EXPIRED": return "badge badge-danger";
+    default: return "badge badge-neutral";
+  }
+}
 
 export default function MyBookingsPage() {
   const { isAuthenticated, hydrated } = useAuthStore((s) => s);
   const { data: bookings, isLoading, error } = useMyBookings(isAuthenticated);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (hydrated && !isAuthenticated) {
+      router.push("/login");
+    }
+  }, [hydrated, isAuthenticated, router]);
 
   if (!hydrated || isLoading) {
     return (
-      <main className="min-h-screen bg-[#0b0e14] text-white">
+      <main style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
         <Navbar />
-        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] text-gray-400">
-          Loading your tickets...
+        <div className="container" style={{ paddingTop: 96, paddingBottom: "4rem" }}>
+          <div style={{ height: 36, width: 200, marginBottom: "1.5rem" }} className="skeleton" />
+          <div style={{ height: 40, width: 240, marginBottom: "0.5rem" }} className="skeleton" />
+          <div style={{ height: 20, width: 320, marginBottom: "2rem" }} className="skeleton" />
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: 100, borderRadius: "var(--radius-lg)", marginBottom: "0.875rem" }} />
+          ))}
         </div>
       </main>
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <main className="min-h-screen bg-[#0b0e14] text-white">
-        <Navbar />
-        <div className="container mx-auto px-6 pt-[100px] text-center">
-          <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg inline-block">
-            Please log in to view your tickets.
-          </div>
-        </div>
-      </main>
-    );
-  }
+  if (!isAuthenticated) return null;
 
   return (
-    <main className="min-h-screen bg-[#0b0e14] text-white">
+    <main style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
       <Navbar />
-      <div className="container mx-auto px-6 pt-[100px] pb-12">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 mb-4 text-gray-400 hover:text-[#00f0ff] transition-colors"
-        >
-          <ArrowLeft size={16} /> Home
-        </Link>
-        <h1 className="text-4xl font-bold mb-2">My Tickets</h1>
-        <p className="text-gray-400 text-lg mb-8">View and manage your upcoming events.</p>
+      <div className="container" style={{ paddingTop: 96, paddingBottom: "4rem" }}>
 
+        {/* ── Header ── */}
+        <Link href="/" style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.4rem",
+          color: "var(--text-muted)",
+          fontSize: "0.875rem",
+          marginBottom: "1.5rem",
+          transition: "color 0.15s ease",
+        }}>
+          <ArrowLeft size={15} /> Back to Home
+        </Link>
+
+        <h1 style={{ fontSize: "2.25rem", marginBottom: "0.375rem" }}>My Tickets</h1>
+        <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
+          Your bookings and upcoming events.
+        </p>
+
+        {/* ── Content ── */}
         {error ? (
-          <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg">Failed to load bookings.</div>
+          <div className="errorBox">Failed to load bookings. Please try again.</div>
         ) : bookings && bookings.length > 0 ? (
-          <div className="flex flex-col gap-6 max-w-3xl">
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", maxWidth: 720 }}>
             {bookings.map((b) => {
               const d = new Date(b.createdAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
+                month: "short", day: "numeric", year: "numeric",
               });
               const isConfirmed = b.status === "CONFIRMED";
-              const isPending = b.status === "PENDING";
-              const isCancelled = b.status === "CANCELLED";
-              const isExpired = b.status === "EXPIRED";
 
               return (
                 <Link
                   key={b.id}
                   href={`/bookings/${b.id}`}
-                  className="block p-6 bg-[#151a23] border border-white/10 rounded-2xl hover:border-[#00f0ff]/50 hover:-translate-y-1 hover:shadow-[0_4px_20px_rgba(0,240,255,0.1)] transition-all group"
+                  style={{
+                    display: "block",
+                    background: "var(--bg-secondary)",
+                    border: `1px solid ${isConfirmed ? "rgba(0,200,150,0.2)" : "var(--glass-border)"}`,
+                    borderRadius: "var(--radius-lg)",
+                    padding: "1.25rem 1.5rem",
+                    transition: "all 0.2s ease",
+                    textDecoration: "none",
+                    color: "inherit",
+                  }}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start gap-4">
-                      <div className={`p-3 rounded-xl border ${isConfirmed ? 'bg-[#00f0ff]/10 border-[#00f0ff]/30 text-[#00f0ff]' : 'bg-white/5 border-white/10 text-gray-400'}`}>
-                        <Ticket size={24} />
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
+                    {/* Left */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "var(--radius-md)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        background: isConfirmed ? "rgba(0,200,150,0.12)" : "var(--bg-tertiary)",
+                        border: `1px solid ${isConfirmed ? "rgba(0,200,150,0.3)" : "var(--glass-border)"}`,
+                        color: isConfirmed ? "var(--success)" : "var(--text-muted)",
+                      }}>
+                        <Ticket size={20} />
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold mb-1 group-hover:text-[#00f0ff] transition-colors">
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: "1rem", marginBottom: "0.25rem" }}>
                           Event #{b.eventId}
-                        </h3>
-                        <div className="text-sm text-gray-400">
-                          Order #{b.id} • {d} • {b.items.length} ticket{b.items.length !== 1 && "s"}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                            <Calendar size={12} /> {d}
+                          </span>
+                          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                            {b.items.length} ticket{b.items.length !== 1 && "s"}
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-lg">${Number(b.total).toFixed(2)}</div>
-                      <div
-                        className={`text-xs font-semibold px-2 py-1 rounded-full mt-2 inline-block ${
-                          isConfirmed ? "bg-[#00e676]/10 text-[#00e676] border border-[#00e676]/30" : 
-                          isPending ? "bg-[#ffea00]/10 text-[#ffea00] border border-[#ffea00]/30" : 
-                          isCancelled || isExpired ? "bg-[#ff3366]/10 text-[#ff3366] border border-[#ff3366]/30" : 
-                          "bg-white/10 text-gray-400"
-                        }`}
-                      >
-                        {b.status}
+
+                    {/* Right */}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "0.5rem", flexShrink: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: "1.1rem" }}>
+                        ${Number(b.total).toFixed(2)}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <span className={statusBadgeClass(b.status)}>{b.status}</span>
+                        <ExternalLink size={14} color="var(--text-muted)" />
                       </div>
                     </div>
                   </div>
@@ -101,14 +144,18 @@ export default function MyBookingsPage() {
             })}
           </div>
         ) : (
-          <div className="p-12 text-center bg-[#151a23] border border-white/10 rounded-2xl">
-            <Ticket size={48} className="mx-auto text-gray-500 mb-4 opacity-50" />
-            <h3 className="text-xl font-bold mb-2">No tickets yet</h3>
-            <p className="text-gray-400 mb-6">You haven&apos;t booked any events.</p>
-            <Link
-              href="/events"
-              className="inline-block bg-gradient-to-r from-[#00f0ff] to-[#7000ff] text-white font-semibold py-3 px-6 rounded-lg hover:shadow-[0_4px_15px_rgba(112,0,255,0.4)] transition-all"
-            >
+          <div style={{
+            textAlign: "center",
+            padding: "4rem 2rem",
+            background: "var(--bg-secondary)",
+            border: "1px solid var(--glass-border)",
+            borderRadius: "var(--radius-xl)",
+            maxWidth: 480,
+          }}>
+            <Ticket size={48} style={{ opacity: 0.2, marginBottom: "1rem", display: "block", margin: "0 auto 1rem" }} />
+            <h3 style={{ marginBottom: "0.5rem" }}>No tickets yet</h3>
+            <p style={{ marginBottom: "1.5rem" }}>You haven&apos;t booked any events yet.</p>
+            <Link href="/events" className="btn btn-primary">
               Browse Events
             </Link>
           </div>

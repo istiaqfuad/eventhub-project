@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ticket } from "lucide-react";
+import { Ticket, Eye, EyeOff } from "lucide-react";
 import { getProblemDetail, useRegister } from "../hooks/useAuth";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const { mutate: register, isPending, error } = useRegister();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -15,30 +16,76 @@ export default function RegisterPage() {
     register({ email, password });
   };
 
+  const passwordStrength = password.length === 0 ? 0 : password.length < 8 ? 1 : password.length < 12 ? 2 : 3;
+  const strengthColors = ["", "#f04060", "#f5c842", "#00c896"];
+  const strengthLabels = ["", "Too short", "Fair", "Strong"];
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#0b0e14] text-white p-4">
-      <div className="w-full max-w-md bg-[#151a23] rounded-2xl p-8 border border-white/10">
-        <div className="text-center mb-8">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 mb-4 text-[#00f0ff]"
-          >
-            <Ticket size={24} />
-            <span className="font-extrabold text-xl">EventHub</span>
+    <div style={{
+      minHeight: "100vh",
+      background: "var(--bg-primary)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "1.5rem",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* Background glow */}
+      <div style={{
+        position: "absolute",
+        top: "30%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 600,
+        height: 600,
+        background: "radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+
+      <div style={{
+        width: "100%",
+        maxWidth: 420,
+        background: "var(--bg-secondary)",
+        borderRadius: "var(--radius-xl)",
+        padding: "2.5rem 2rem",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+        position: "relative",
+        zIndex: 1,
+      }}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          <Link href="/" style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            color: "var(--accent-primary)",
+            marginBottom: "1.25rem",
+          }}>
+            <Ticket size={22} />
+            <span style={{ fontWeight: 800, fontSize: "1.2rem" }}>EventHub</span>
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Create Account</h1>
-          <p className="text-gray-400">Join the best platform for live entertainment.</p>
+          <h1 style={{ fontSize: "1.75rem", marginBottom: "0.375rem" }}>Create an account</h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", margin: 0 }}>
+            Join to discover and book live events.
+          </p>
         </div>
 
-        {error && <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg mb-6">{getProblemDetail(error)}</div>}
+        {error && (
+          <div className="errorBox" style={{ marginBottom: "1.5rem" }}>
+            {getProblemDetail(error)}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="email" className="font-semibold text-sm">Email Address</label>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+            <label htmlFor="email" style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
+              Email Address
+            </label>
             <input
               type="email"
               id="email"
-              className="w-full bg-[#202632] border border-white/10 rounded-lg p-3 text-white focus:border-[#00f0ff] focus:outline-none transition-colors"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -47,36 +94,80 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label htmlFor="password" className="font-semibold text-sm">Password</label>
-            <input
-              type="password"
-              id="password"
-              className="w-full bg-[#202632] border border-white/10 rounded-lg p-3 text-white focus:border-[#00f0ff] focus:outline-none transition-colors"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              minLength={8}
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Must be 8–72 characters and not appear in known data breaches.
-            </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+            <label htmlFor="password" style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
+              Password
+            </label>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                minLength={8}
+                style={{ paddingRight: "3rem" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  position: "absolute",
+                  right: "0.875rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: 0,
+                }}
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
+
+            {/* Password strength meter */}
+            {password.length > 0 && (
+              <div>
+                <div style={{ display: "flex", gap: "0.25rem", marginBottom: "0.25rem" }}>
+                  {[1, 2, 3].map((level) => (
+                    <div key={level} style={{
+                      flex: 1,
+                      height: 3,
+                      borderRadius: 99,
+                      background: level <= passwordStrength ? strengthColors[passwordStrength] : "var(--bg-tertiary)",
+                      transition: "background 0.2s ease",
+                    }} />
+                  ))}
+                </div>
+                <p style={{ fontSize: "0.75rem", color: strengthColors[passwordStrength], margin: 0 }}>
+                  {strengthLabels[passwordStrength]}
+                </p>
+              </div>
+            )}
           </div>
 
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-[#00f0ff] to-[#7000ff] text-white font-semibold py-3 px-4 rounded-lg hover:shadow-[0_4px_15px_rgba(112,0,255,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-50"
+            className="btn btn-primary"
             disabled={isPending}
+            style={{ width: "100%", padding: "0.8rem", marginTop: "0.25rem" }}
           >
-            {isPending ? "Creating Account..." : "Create Account"}
+            {isPending ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
-        <div className="text-center mt-8 text-gray-400 text-sm">
-          Already have an account? <Link href="/login" className="text-[#00f0ff] hover:underline">Sign in</Link>
-        </div>
+        <p style={{ textAlign: "center", marginTop: "1.75rem", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+          Already have an account?{" "}
+          <Link href="/login" style={{ color: "var(--accent-primary)", fontWeight: 600 }}>
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   );
