@@ -23,49 +23,69 @@ export default function InteractiveSeatMap({ sections, selectedSeats, onSeatTogg
     const sortedRows = Array.from(rowMap.keys()).sort();
 
     return (
-      <div key={section.id} className="flex flex-col items-center gap-4 mb-8">
-        <div className="text-lg font-semibold text-white uppercase tracking-widest">{section.name}</div>
+      <div key={section.id} className="flex flex-col items-center gap-4 mb-10 w-full overflow-x-auto pb-4">
+        <div className="text-lg font-semibold text-white uppercase tracking-widest bg-white/10 px-4 py-1 rounded-full mb-2">
+          {section.name}
+        </div>
         
         {sortedRows.map(rowLabel => {
           const rowSeats = rowMap.get(rowLabel)!;
-          rowSeats.sort((a, b) => a.colNumber - b.colNumber);
+          const maxCol = Math.max(...rowSeats.map(s => s.colNumber));
+          const seatsByCol = new Map(rowSeats.map(s => [s.colNumber, s]));
+
+          // Prevent rendering an absurd number of empty divs if colNumber is artificially huge
+          const renderMaxCol = Math.min(maxCol, 150);
 
           return (
-            <div key={rowLabel} className="flex gap-2 items-center">
-              <div className="w-8 text-right font-semibold text-gray-400 text-sm">{rowLabel}</div>
-              {rowSeats.map(seat => {
-                const isSelected = selectedSeats.has(seat.id);
-                // Status styles
-                const isFree = seat.status === "FREE";
-                const baseClasses = "w-9 h-9 rounded-t-lg rounded-b flex items-center justify-center text-xs font-bold transition-all relative group select-none";
-                
-                let statusClasses = "";
-                if (isSelected) {
-                  statusClasses = "bg-[#00f0ff] border border-[#00f0ff] text-white -translate-y-0.5 shadow-[0_4px_12px_rgba(0,240,255,0.4)] cursor-pointer";
-                } else if (isFree) {
-                  statusClasses = "bg-white/5 border border-white/10 text-gray-400 hover:border-[#00f0ff] hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,240,255,0.2)] hover:text-white cursor-pointer";
-                } else {
-                  statusClasses = "bg-white/5 border border-white/10 text-white/20 cursor-not-allowed";
-                }
-                
-                return (
-                  <div
-                    key={seat.id}
-                    className={`${baseClasses} ${statusClasses}`}
-                    onClick={() => {
-                      if (isFree || isSelected) {
-                        onSeatToggle(seat, section.name, Number(section.basePrice));
-                      }
-                    }}
-                  >
-                    {seat.colNumber}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#151a23] border border-white/10 px-2 py-1 rounded text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                      Row {rowLabel} - Seat {seat.colNumber} (${Number(section.basePrice).toFixed(2)})
+            <div key={rowLabel} className="flex gap-2 items-center w-max">
+              <div className="w-8 text-right font-bold text-gray-400 text-sm shrink-0">{rowLabel}</div>
+              
+              <div className="flex gap-2">
+                {Array.from({ length: renderMaxCol }).map((_, i) => {
+                  const colNumber = i + 1;
+                  const seat = seatsByCol.get(colNumber);
+
+                  if (!seat) {
+                    return <div key={`empty-${colNumber}`} className="w-8 h-8 opacity-0 pointer-events-none shrink-0" />;
+                  }
+
+                  const isSelected = selectedSeats.has(seat.id);
+                  const isFree = seat.status === "FREE";
+                  
+                  // Base seat styling
+                  const baseClasses = "w-8 h-8 rounded-t-lg rounded-b-sm flex items-center justify-center text-[11px] font-bold transition-all relative group select-none shrink-0";
+                  
+                  let statusClasses = "";
+                  if (isSelected) {
+                    statusClasses = "bg-[#00f0ff] text-black shadow-[0_0_15px_rgba(0,240,255,0.6)] cursor-pointer transform -translate-y-1";
+                  } else if (isFree) {
+                    statusClasses = "bg-white/10 text-gray-300 hover:bg-[#00f0ff]/20 hover:text-[#00f0ff] hover:shadow-[0_0_10px_rgba(0,240,255,0.3)] cursor-pointer";
+                  } else {
+                    statusClasses = "bg-white/5 text-white/10 cursor-not-allowed";
+                  }
+                  
+                  return (
+                    <div
+                      key={seat.id}
+                      className={`${baseClasses} ${statusClasses}`}
+                      onClick={() => {
+                        if (isFree || isSelected) {
+                          onSeatToggle(seat, section.name, Number(section.basePrice));
+                        }
+                      }}
+                    >
+                      {seat.colNumber}
+                      
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#151a23] border border-white/20 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-white font-medium">
+                        Row {rowLabel} - Seat {seat.colNumber} <span className="text-gray-400 ml-1 font-normal">(${Number(section.basePrice).toFixed(2)})</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-              <div className="w-8 text-left font-semibold text-gray-400 text-sm">{rowLabel}</div>
+                  );
+                })}
+              </div>
+
+              <div className="w-8 text-left font-bold text-gray-400 text-sm shrink-0">{rowLabel}</div>
             </div>
           );
         })}
