@@ -47,15 +47,11 @@ export default function InteractiveSeatMap({
               <div className="w-8 text-right font-bold text-gray-400 text-sm shrink-0">{rowLabel}</div>
               
               <div className="flex gap-2">
-                {Array.from({ length: renderMaxCol }).map((_, i) => {
-                  const colNumber = i + 1;
-                  const seat = seatsByCol.get(colNumber);
+                {rowSeats.map((seat, index) => {
+                  const prevSeat = index > 0 ? rowSeats[index - 1] : null;
+                  const isGap = prevSeat && seat.colNumber > prevSeat.colNumber + 1;
 
-                  if (!seat) {
-                    return <div key={`empty-${colNumber}`} className="w-8 h-8 opacity-0 pointer-events-none shrink-0" />;
-                  }
-
-                  const isSelected = selectedSeats.has(seat.id);
+                  const isSelected = selectedSeats?.has(seat.id) ?? false;
                   const isFree = seat.status === "FREE";
                   
                   // Base seat styling
@@ -64,10 +60,8 @@ export default function InteractiveSeatMap({
                   let statusClasses = "";
                   
                   if (isReadOnly) {
-                    // Read-only styling (no hover effects or selection)
                     statusClasses = "bg-white/10 text-gray-300";
                   } else {
-                    // Interactive styling
                     if (isSelected) {
                       statusClasses = "bg-[#00f0ff] text-black shadow-[0_0_15px_rgba(0,240,255,0.6)] cursor-pointer transform -translate-y-1";
                     } else if (isFree) {
@@ -78,23 +72,24 @@ export default function InteractiveSeatMap({
                   }
                   
                   return (
-                    <div
-                      key={seat.id}
-                      className={`${baseClasses} ${statusClasses}`}
-                      onClick={() => {
-                        if (!isReadOnly && onSeatToggle && (isFree || isSelected)) {
-                          onSeatToggle(seat, section.name, Number(section.basePrice));
-                        }
-                      }}
-                    >
-                      {seat.colNumber}
-                      
-                      {/* Tooltip */}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#151a23] border border-white/20 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-white font-medium">
-                        Row {rowLabel} - Seat {seat.colNumber} 
-                        {!isReadOnly && <span className="text-gray-400 ml-1 font-normal">(${Number(section.basePrice).toFixed(2)})</span>}
+                    <React.Fragment key={seat.id}>
+                      {isGap && <div className="w-6 h-8 shrink-0 border-l border-white/5 mx-1" />}
+                      <div
+                        className={`${baseClasses} ${statusClasses}`}
+                        onClick={() => {
+                          if (!isReadOnly && onSeatToggle && (isFree || isSelected)) {
+                            onSeatToggle(seat, section.name, Number(section.basePrice));
+                          }
+                        }}
+                      >
+                        {seat.colNumber}
+                        
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#151a23] border border-white/20 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-white font-medium">
+                          Row {rowLabel} - Seat {seat.colNumber} 
+                          {!isReadOnly && <span className="text-gray-400 ml-1 font-normal">(${Number(section.basePrice).toFixed(2)})</span>}
+                        </div>
                       </div>
-                    </div>
+                    </React.Fragment>
                   );
                 })}
               </div>
