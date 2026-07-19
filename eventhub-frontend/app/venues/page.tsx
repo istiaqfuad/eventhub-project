@@ -61,7 +61,7 @@ function getVenueStyle(layoutType: LayoutType) {
         iconBg: "rgba(0, 212, 255, 0.1)",
         iconColor: "var(--accent-primary)",
         accentColor: "var(--accent-primary)",
-        label: layoutType.replace(/_/g, " "),
+        label: (layoutType as string).replace(/_/g, " "),
         description: "Live event venue",
       };
   }
