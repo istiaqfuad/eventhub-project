@@ -50,6 +50,7 @@ export default function EventsCatalog() {
   const filtered = useMemo(() => {
     if (!events) return [];
     return events.filter((e) => {
+      if (e.status === "DRAFT") return false;
       const matchesSearch =
         search.trim() === "" ||
         e.title.toLowerCase().includes(search.toLowerCase()) ||

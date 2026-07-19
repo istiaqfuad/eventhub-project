@@ -108,7 +108,7 @@ export default function Home() {
           </div>
         ) : events && events.length > 0 ? (
           <div className={styles.eventsGrid}>
-            {events.slice(0, 6).map((event) => {
+            {events.filter(e => e.status !== "DRAFT").slice(0, 6).map((event) => {
               const eventDate = new Date(event.startsAt);
               const formattedDate = eventDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
               const formattedTime = eventDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
