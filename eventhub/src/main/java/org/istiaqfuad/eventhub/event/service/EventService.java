@@ -13,6 +13,9 @@ import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.istiaqfuad.eventhub.user.entity.Organizer;
 import org.istiaqfuad.eventhub.user.repository.OrganizerRepository;
 import org.istiaqfuad.eventhub.venue.repository.VenueRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +66,7 @@ public class EventService {
                 )).toList();
     }
 
+    @CacheEvict(value = "events", allEntries = true)
     public EventResponse create(EventRequest request, AuthenticatedUser caller) {
         Event event = new Event();
         event.setOrganizer(resolveOrganizer(request, caller));
@@ -107,6 +111,7 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "events", key = "#id")
     public EventResponse get(Long id) {
         Event event = events.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Event", id));

@@ -5,6 +5,9 @@ import org.istiaqfuad.eventhub.venue.dto.VenueRequest;
 import org.istiaqfuad.eventhub.venue.dto.VenueResponse;
 import org.istiaqfuad.eventhub.venue.entity.Venue;
 import org.istiaqfuad.eventhub.venue.repository.VenueRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +34,7 @@ public class VenueService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "venues", key = "#id + ':layout'")
     public org.istiaqfuad.eventhub.venue.dto.VenueLayoutResponse getLayout(Long id) {
         VenueResponse venue = get(id);
         List<org.istiaqfuad.eventhub.venue.entity.Section> venueSections = sections.findByVenueId(id);
@@ -53,6 +57,9 @@ public class VenueService {
         return new org.istiaqfuad.eventhub.venue.dto.VenueLayoutResponse(venue, sectionResponses);
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "venues", allEntries = true)
+    })
     public VenueResponse create(VenueRequest request) {
         Venue venue = new Venue();
         venue.setName(request.name());
@@ -63,6 +70,7 @@ public class VenueService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "venues", key = "#id")
     public VenueResponse get(Long id) {
         Venue venue = venues.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Venue", id));

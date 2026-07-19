@@ -20,6 +20,7 @@ import org.istiaqfuad.eventhub.user.repository.UserRepository;
 import org.istiaqfuad.eventhub.venue.entity.Seat;
 import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
 import org.istiaqfuad.eventhub.venue.repository.SeatRepository;
+import org.istiaqfuad.eventhub.waitingroom.WaitingRoomService;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,10 +51,12 @@ public class BookingService {
     private final TicketTypeRepository ticketTypes;
     private final BookingItemRepository bookingItems;
     private final BookingProperties bookingProperties;
+    private final WaitingRoomService waitingRoom;
 
     public BookingService(BookingRepository bookings, UserRepository users, EventRepository events,
                           SeatRepository seats, TicketTypeRepository ticketTypes,
-                          BookingItemRepository bookingItems, BookingProperties bookingProperties) {
+                          BookingItemRepository bookingItems, BookingProperties bookingProperties,
+                          WaitingRoomService waitingRoom) {
         this.bookings = bookings;
         this.users = users;
         this.events = events;
@@ -61,12 +64,19 @@ public class BookingService {
         this.ticketTypes = ticketTypes;
         this.bookingItems = bookingItems;
         this.bookingProperties = bookingProperties;
+        this.waitingRoom = waitingRoom;
     }
 
     public BookingResponse create(BookingRequest request, Long userId) {
         Event event = events.findById(request.eventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Event", request.eventId()));
 
+        // High-demand events require a valid admission token from the waiting room
+        if (Boolean.TRUE.equals(event.getHighDemand())
+                && !waitingRoom.hasAdmissionToken(event.getId(), userId)) {
+            throw new AccessDeniedException(
+                    "A waiting-room admission token is required to book this event");
+        }
         Booking booking = new Booking();
         booking.setUser(users.getReferenceById(userId));
         booking.setEvent(event);
