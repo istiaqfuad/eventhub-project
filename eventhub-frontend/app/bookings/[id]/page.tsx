@@ -61,7 +61,7 @@ export default function BookingDetailsPage({ params }: { params: Promise<{ id: s
   return (
     <main className="min-h-screen bg-[#0b0e14] text-white">
       <Navbar />
-      <div className="container mx-auto px-6 pt-40 pb-12">
+      <div className="container mx-auto px-6 pb-12" style={{ paddingTop: '140px' }}>
         <Link
           href="/bookings"
           className="inline-flex items-center gap-2 mb-6 text-gray-400 hover:text-[#00f0ff] transition-colors"

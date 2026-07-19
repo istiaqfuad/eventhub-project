@@ -20,7 +20,7 @@ export default function BookingSuccessPage() {
   return (
     <main className="min-h-screen bg-[#0b0e14] text-white">
       <Navbar />
-      <div className="container mx-auto px-6 pt-40 pb-12 flex flex-col items-center justify-center text-center">
+      <div className="container mx-auto px-6 pb-12 flex flex-col items-center justify-center text-center" style={{ paddingTop: '140px' }}>
         <div className="bg-[#151a23] border border-white/10 rounded-3xl p-12 max-w-lg w-full flex flex-col items-center shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00f0ff] to-[#7000ff]" />
           
