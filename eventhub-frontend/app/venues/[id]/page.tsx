@@ -217,8 +217,7 @@ export default function VenueDetailPage({ params }: { params: Promise<{ id: stri
                   }}>
                     <InteractiveSeatMap
                       sections={layout.sections}
-                      selectedSeats={new Set()}
-                      onSeatToggle={() => {}}
+                      isReadOnly={true}
                     />
                   </div>
                 </>

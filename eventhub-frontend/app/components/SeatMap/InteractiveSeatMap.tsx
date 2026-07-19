@@ -5,11 +5,17 @@ import { SeatResponse, SectionWithSeatsResponse } from "../../lib/types";
 
 interface SeatMapProps {
   sections: SectionWithSeatsResponse[];
-  selectedSeats: Set<number>;
-  onSeatToggle: (seat: SeatResponse, sectionName: string, basePrice: number) => void;
+  selectedSeats?: Set<number>;
+  onSeatToggle?: (seat: SeatResponse, sectionName: string, basePrice: number) => void;
+  isReadOnly?: boolean;
 }
 
-export default function InteractiveSeatMap({ sections, selectedSeats, onSeatToggle }: SeatMapProps) {
+export default function InteractiveSeatMap({ 
+  sections, 
+  selectedSeats = new Set(), 
+  onSeatToggle,
+  isReadOnly = false
+}: SeatMapProps) {
   
   const renderSection = (sectionData: SectionWithSeatsResponse) => {
     const { section, seats } = sectionData;
@@ -56,12 +62,19 @@ export default function InteractiveSeatMap({ sections, selectedSeats, onSeatTogg
                   const baseClasses = "w-8 h-8 rounded-t-lg rounded-b-sm flex items-center justify-center text-[11px] font-bold transition-all relative group select-none shrink-0";
                   
                   let statusClasses = "";
-                  if (isSelected) {
-                    statusClasses = "bg-[#00f0ff] text-black shadow-[0_0_15px_rgba(0,240,255,0.6)] cursor-pointer transform -translate-y-1";
-                  } else if (isFree) {
-                    statusClasses = "bg-white/10 text-gray-300 hover:bg-[#00f0ff]/20 hover:text-[#00f0ff] hover:shadow-[0_0_10px_rgba(0,240,255,0.3)] cursor-pointer";
+                  
+                  if (isReadOnly) {
+                    // Read-only styling (no hover effects or selection)
+                    statusClasses = "bg-white/10 text-gray-300";
                   } else {
-                    statusClasses = "bg-white/5 text-white/10 cursor-not-allowed";
+                    // Interactive styling
+                    if (isSelected) {
+                      statusClasses = "bg-[#00f0ff] text-black shadow-[0_0_15px_rgba(0,240,255,0.6)] cursor-pointer transform -translate-y-1";
+                    } else if (isFree) {
+                      statusClasses = "bg-white/10 text-gray-300 hover:bg-[#00f0ff]/20 hover:text-[#00f0ff] hover:shadow-[0_0_10px_rgba(0,240,255,0.3)] cursor-pointer";
+                    } else {
+                      statusClasses = "bg-white/5 text-white/10 cursor-not-allowed";
+                    }
                   }
                   
                   return (
@@ -69,7 +82,7 @@ export default function InteractiveSeatMap({ sections, selectedSeats, onSeatTogg
                       key={seat.id}
                       className={`${baseClasses} ${statusClasses}`}
                       onClick={() => {
-                        if (isFree || isSelected) {
+                        if (!isReadOnly && onSeatToggle && (isFree || isSelected)) {
                           onSeatToggle(seat, section.name, Number(section.basePrice));
                         }
                       }}
@@ -78,7 +91,8 @@ export default function InteractiveSeatMap({ sections, selectedSeats, onSeatTogg
                       
                       {/* Tooltip */}
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#151a23] border border-white/20 px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 shadow-lg text-white font-medium">
-                        Row {rowLabel} - Seat {seat.colNumber} <span className="text-gray-400 ml-1 font-normal">(${Number(section.basePrice).toFixed(2)})</span>
+                        Row {rowLabel} - Seat {seat.colNumber} 
+                        {!isReadOnly && <span className="text-gray-400 ml-1 font-normal">(${Number(section.basePrice).toFixed(2)})</span>}
                       </div>
                     </div>
                   );
@@ -108,7 +122,7 @@ export default function InteractiveSeatMap({ sections, selectedSeats, onSeatTogg
     return (
       <div className="flex flex-col items-center justify-center p-16 text-center bg-white/5 rounded-xl border border-dashed border-white/10">
         <h3 className="text-[#7000ff] mb-2 text-2xl font-bold">General Admission Event</h3>
-        <p className="text-gray-400">Please use the Ticket Types selector on the left to choose your tickets.</p>
+        <p className="text-gray-400">{isReadOnly ? "This venue is general admission." : "Please use the Ticket Types selector on the left to choose your tickets."}</p>
       </div>
     );
   }
@@ -123,20 +137,22 @@ export default function InteractiveSeatMap({ sections, selectedSeats, onSeatTogg
         {sectionsWithSeats.map(renderSection)}
       </div>
       
-      <div className="flex justify-center gap-8 mt-12 pt-4 border-t border-white/10">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded flex items-center justify-center bg-white/5 border border-white/10" /> 
-          <span className="text-sm text-gray-400">Available</span>
+      {!isReadOnly && (
+        <div className="flex justify-center gap-8 mt-12 pt-4 border-t border-white/10">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded flex items-center justify-center bg-white/5 border border-white/10" /> 
+            <span className="text-sm text-gray-400">Available</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded flex items-center justify-center bg-[#00f0ff] border border-[#00f0ff]" /> 
+            <span className="text-sm text-gray-400">Selected</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded flex items-center justify-center bg-white/5 border border-white/10 opacity-50" /> 
+            <span className="text-sm text-gray-400">Unavailable</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded flex items-center justify-center bg-[#00f0ff] border border-[#00f0ff]" /> 
-          <span className="text-sm text-gray-400">Selected</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded flex items-center justify-center bg-white/5 border border-white/10 opacity-50" /> 
-          <span className="text-sm text-gray-400">Unavailable</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
