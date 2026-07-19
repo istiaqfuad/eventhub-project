@@ -14,9 +14,17 @@ services:
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - STRIPE_SUCCESS_URL=${FRONTEND_URL}/booking/success
       - STRIPE_CANCEL_URL=${FRONTEND_URL}/booking/cancel
+      - REDIS_HOST=eventhub-redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=eventhub-rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
     ports:
       - "8080:8080"
-
+    depends_on:
+      - redis
+      - rabbitmq
     restart: unless-stopped
     networks:
       - dokploy-network
@@ -37,6 +45,33 @@ services:
     networks:
       - dokploy-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: eventhub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - dokploy-network
+    volumes:
+      - redis-data:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: eventhub-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - dokploy-network
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
 networks:
   dokploy-network:
     external: true
+
+volumes:
+  redis-data:
+  rabbitmq-data:
