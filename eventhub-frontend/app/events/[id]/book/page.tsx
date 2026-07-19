@@ -139,147 +139,225 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
   };
 
   return (
-    <main className="min-h-screen bg-[#0b0e14] text-white">
+    <main style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)" }}>
       <Navbar />
 
-      <div className="container mx-auto px-6 pt-[100px] pb-12">
-        <div className="mb-8">
+      <div className="container" style={{ paddingTop: "140px", paddingBottom: "4rem", maxWidth: 1200 }}>
+        {/* ── Page Header ── */}
+        <div style={{ marginBottom: "3rem" }}>
           <Link
             href={`/events/${event.id}`}
-            className="inline-flex items-center gap-2 mb-4 text-gray-400 hover:text-[#00f0ff] transition-colors"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              color: "var(--text-muted)",
+              fontSize: "0.9rem",
+              marginBottom: "1.5rem",
+              transition: "color 0.2s ease",
+              textDecoration: "none"
+            }}
+            className="hover:text-[#00f0ff]"
           >
             <ArrowLeft size={16} /> Back to Event Details
           </Link>
-          <h1 className="text-4xl font-bold mb-2">Select Tickets</h1>
-          <p className="text-gray-400 text-lg">{event.title}</p>
+          <h1 style={{ fontSize: "3rem", fontWeight: 800, letterSpacing: "-0.02em", marginBottom: "0.5rem", lineHeight: 1.1 }}>
+            Select Tickets
+          </h1>
+          <p style={{ color: "var(--accent-primary)", fontSize: "1.25rem", fontWeight: 600 }}>
+            {event.title}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-12">
-          <div className="flex flex-col gap-8">
-            <div className="bg-[#151a23] border border-white/10 rounded-2xl p-8">
-              <h2 className="text-2xl font-bold mb-4">General Admission Tickets</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "2.5rem", alignItems: "start" }} className="lg:grid-cols-[1fr_380px] grid-cols-1">
+          
+          {/* ── Left Column ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
+            
+            {/* General Admission Tickets */}
+            <div style={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--glass-border)",
+              borderRadius: "var(--radius-xl)",
+              padding: "2.5rem",
+              boxShadow: "var(--shadow-md)"
+            }}>
+              <h2 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Ticket size={24} className="text-[#00f0ff]" /> General Admission
+              </h2>
+              
               {ticketTypes && ticketTypes.length > 0 ? (
-                <div className="flex flex-col gap-4">
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {ticketTypes.map((ticket) => (
                     <div
                       key={ticket.id}
-                      className="flex justify-between items-center p-4 border border-white/10 rounded-xl bg-[#202632]"
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "1.25rem 1.5rem",
+                        background: "var(--bg-tertiary)",
+                        border: "1px solid var(--glass-border)",
+                        borderRadius: "var(--radius-lg)",
+                        transition: "all 0.2s ease"
+                      }}
+                      className="hover:border-[#00f0ff]/30 hover:shadow-[0_4px_20px_rgba(0,240,255,0.05)]"
                     >
                       <div>
-                        <div className="font-semibold text-lg">{ticket.name}</div>
-                        <div className="text-gray-400 text-sm mt-1">
-                          ${Number(ticket.price).toFixed(2)}
+                        <div style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                          {ticket.name}
+                        </div>
+                        <div style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "0.25rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <span style={{ fontWeight: 700, color: "white" }}>${Number(ticket.price).toFixed(2)}</span>
                           {ticket.quota != null && (
-                            <span className="ml-2">· {ticket.quota} available</span>
+                            <>
+                              <span style={{ opacity: 0.5 }}>•</span>
+                              <span>{ticket.quota} available</span>
+                            </>
                           )}
                         </div>
                       </div>
-                      <select
-                        className="w-20 p-2 bg-[#151a23] text-white border border-white/10 rounded-lg focus:border-[#00f0ff] focus:outline-none"
-                        value={gaQuantities.get(ticket.id) || 0}
-                        onChange={(e) =>
-                          handleGaQuantityChange(ticket.id, parseInt(e.target.value, 10))
-                        }
-                      >
-                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <option key={num} value={num}>
-                            {num}
-                          </option>
-                        ))}
-                      </select>
+                      
+                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                        <select
+                          style={{
+                            width: "70px",
+                            padding: "0.5rem",
+                            background: "var(--bg-primary)",
+                            color: "white",
+                            border: "1px solid var(--glass-border)",
+                            borderRadius: "var(--radius-md)",
+                            fontSize: "1rem",
+                            fontWeight: 600,
+                            textAlign: "center",
+                            cursor: "pointer",
+                            outline: "none"
+                          }}
+                          className="focus:border-[#00f0ff]"
+                          value={gaQuantities.get(ticket.id) || 0}
+                          onChange={(e) => handleGaQuantityChange(ticket.id, parseInt(e.target.value, 10))}
+                        >
+                          {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                            <option key={num} value={num}>{num}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-gray-400">No ticket types available.</div>
+                <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", background: "var(--bg-tertiary)", borderRadius: "var(--radius-lg)", border: "1px dashed var(--glass-border)" }}>
+                  No ticket types available for this event.
+                </div>
               )}
             </div>
 
+            {/* Venue Layout */}
             {event.venueId && (
-              <div className="bg-[#151a23] border border-white/10 rounded-2xl p-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Venue Layout</h2>
-                  <span className="text-sm text-gray-400 flex items-center gap-2">
+              <div style={{
+                background: "var(--bg-secondary)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "var(--radius-xl)",
+                padding: "2.5rem",
+                boxShadow: "var(--shadow-md)"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+                  <h2 style={{ fontSize: "1.5rem", fontWeight: 700 }}>Venue Layout</h2>
+                  <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
                     <MapPin size={14} /> {event.city || "Venue"}
                   </span>
                 </div>
 
                 {isLoadingLayout ? (
-                  <div className="p-12 text-center text-gray-400">
-                    Loading Seat Map...
+                  <div style={{ padding: "4rem", display: "flex", justifyContent: "center" }}>
+                    <div className="skeleton" style={{ height: 300, width: "100%", borderRadius: "var(--radius-lg)" }} />
                   </div>
                 ) : layout ? (
-                  <InteractiveSeatMap
-                    sections={layout.sections}
-                    selectedSeats={new Set(selectedSeatsMap.keys())}
-                    onSeatToggle={handleSeatToggle}
-                  />
+                  <div style={{ background: "var(--bg-primary)", border: "1px solid var(--glass-border)", borderRadius: "var(--radius-lg)", padding: "1.5rem", overflow: "hidden" }}>
+                    <InteractiveSeatMap
+                      sections={layout.sections}
+                      selectedSeats={new Set(selectedSeatsMap.keys())}
+                      onSeatToggle={handleSeatToggle}
+                    />
+                  </div>
                 ) : (
-                  <div className="text-gray-400">Venue layout unavailable.</div>
+                  <div style={{ padding: "3rem", textAlign: "center", color: "var(--text-muted)", background: "var(--bg-tertiary)", borderRadius: "var(--radius-lg)", border: "1px dashed var(--glass-border)" }}>
+                    Venue layout unavailable.
+                  </div>
                 )}
               </div>
             )}
           </div>
 
-          <div>
-            <div className="bg-[#151a23] border border-white/10 rounded-2xl p-8 sticky top-[100px] shadow-xl">
-              <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
+          {/* ── Right Column (Order Summary) ── */}
+          <div style={{ position: "sticky", top: "120px" }}>
+            <div style={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--glass-border)",
+              borderRadius: "var(--radius-xl)",
+              padding: "2rem",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
+            }}>
+              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid var(--glass-border)" }}>
+                Order Summary
+              </h2>
 
               {isCartEmpty ? (
-                <div className="text-gray-400 text-center py-8 border-b border-white/10 mb-6">
+                <div style={{ padding: "2rem 0", textAlign: "center", color: "var(--text-muted)", fontSize: "0.95rem" }}>
+                  <Ticket size={32} style={{ opacity: 0.2, margin: "0 auto 1rem" }} />
                   No tickets selected yet.
                 </div>
               ) : (
-                <div className="flex flex-col gap-3 mb-6 pb-6 border-b border-white/10">
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem", paddingBottom: "1.5rem", borderBottom: "1px solid var(--glass-border)" }}>
                   {Array.from(gaQuantities.entries()).map(([ticketId, quantity]) => {
                     const ticket = ticketTypes?.find((t) => t.id === ticketId);
                     if (!ticket) return null;
                     return (
-                      <div
-                        key={`ga-${ticketId}`}
-                        className="flex justify-between text-sm"
-                      >
-                        <span>
-                          {quantity}x {ticket.name}
+                      <div key={`ga-${ticketId}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.95rem" }}>
+                        <span style={{ color: "var(--text-secondary)" }}>
+                          <span style={{ color: "white", fontWeight: 600, marginRight: "0.5rem" }}>{quantity}x</span> 
+                          {ticket.name}
                         </span>
-                        <span className="font-medium">${(Number(ticket.price) * quantity).toFixed(2)}</span>
+                        <span style={{ fontWeight: 600 }}>${(Number(ticket.price) * quantity).toFixed(2)}</span>
                       </div>
                     );
                   })}
 
                   {Array.from(selectedSeatsMap.values()).map(({ seat, sectionName, price }) => (
-                    <div
-                      key={`seat-${seat.id}`}
-                      className="flex justify-between text-sm"
-                    >
-                      <span className="flex items-center gap-1.5 text-gray-300">
+                    <div key={`seat-${seat.id}`} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.95rem" }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "var(--text-secondary)" }}>
                         <Ticket size={12} className="text-[#00f0ff]" />
-                        {sectionName} · Row {seat.rowLabel} Seat {seat.colNumber}
+                        {sectionName} <span style={{ opacity: 0.5 }}>·</span> Row {seat.rowLabel} Seat {seat.colNumber}
                       </span>
-                      <span className="font-medium text-white">${price.toFixed(2)}</span>
+                      <span style={{ fontWeight: 600 }}>${price.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="flex justify-between mb-6 text-xl font-bold">
-                <span>Total</span>
-                <span className="text-[#00f0ff]">${totalAmount.toFixed(2)}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                <span style={{ fontSize: "1.1rem", color: "var(--text-secondary)" }}>Total</span>
+                <span style={{ fontSize: "2rem", fontWeight: 800, color: "var(--accent-primary)", lineHeight: 1 }}>
+                  ${totalAmount.toFixed(2)}
+                </span>
               </div>
 
               {checkoutError && (
-                <div className="bg-[#ff3366]/10 border border-[#ff3366]/30 text-[#ff8fab] p-4 rounded-lg mb-4 text-sm">
+                <div className="errorBox" style={{ marginBottom: "1.5rem", fontSize: "0.85rem", padding: "1rem" }}>
                   {checkoutError}
                 </div>
               )}
 
               <button
                 type="button"
-                className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all ${
-                  isCartEmpty 
-                    ? "bg-[#202632] text-gray-500 cursor-not-allowed" 
-                    : "bg-gradient-to-r from-[#00f0ff] to-[#7000ff] text-white hover:shadow-[0_4px_20px_rgba(112,0,255,0.4)] hover:-translate-y-1"
-                }`}
+                className={`btn ${isCartEmpty ? "btn-secondary" : "btn-primary"}`}
+                style={{
+                  width: "100%",
+                  padding: "1rem",
+                  fontSize: "1.05rem",
+                  opacity: isCartEmpty || isCheckingOut ? 0.5 : 1,
+                  cursor: isCartEmpty || isCheckingOut ? "not-allowed" : "pointer"
+                }}
                 disabled={isCartEmpty || isCheckingOut}
                 onClick={handleCheckout}
               >
@@ -289,7 +367,8 @@ export default function BookingPage({ params }: { params: Promise<{ id: string }
                     ? "Log in to Checkout"
                     : "Proceed to Checkout"}
               </button>
-              <p className="text-center text-xs text-gray-500 mt-4 font-medium">
+              
+              <p style={{ textAlign: "center", fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "1rem", fontWeight: 500 }}>
                 Seats are held while you pay. Secure checkout via Stripe.
               </p>
             </div>
