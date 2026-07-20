@@ -49,6 +49,10 @@ class BookingInventoryServiceTest {
         org.istiaqfuad.eventhub.user.entity.User user = new org.istiaqfuad.eventhub.user.entity.User();
         user.setId(100L);
         booking.setUser(user);
+        org.istiaqfuad.eventhub.event.entity.Event event = new org.istiaqfuad.eventhub.event.entity.Event();
+        event.setId(200L);
+        booking.setEvent(event);
+        booking.setTotal(java.math.BigDecimal.TEN);
 
         seat = new Seat();
         seat.setStatus(SeatStatus.HELD);

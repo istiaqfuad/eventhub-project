@@ -222,6 +222,7 @@ class BookingServiceTest {
     @Test
     void duplicateSeatInRequestIsRejected() {
         freeSeat(1L, "50.00");
+        when(redisOps.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
         assertThatThrownBy(() -> service.create(seatedRequest(1L, 1L), USER_ID))
                 .isInstanceOf(InvalidReservationException.class);
     }
