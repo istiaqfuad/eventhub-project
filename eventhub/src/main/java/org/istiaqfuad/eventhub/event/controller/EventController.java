@@ -8,9 +8,15 @@ import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.istiaqfuad.eventhub.security.web.CurrentUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -46,8 +52,23 @@ public class EventController {
         return eventService.getTicketTypes(id);
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
+    public EventResponse update(@PathVariable Long id, 
+                                @Valid @RequestBody EventRequest request,
+                                @CurrentUser AuthenticatedUser caller) {
+        return eventService.update(id, request, caller);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAnyRole('ORGANIZER', 'ADMIN')")
+    public void delete(@PathVariable Long id, @CurrentUser AuthenticatedUser caller) {
+        eventService.delete(id, caller);
+    }
+
     @GetMapping
-    public List<EventResponse> list() {
-        return eventService.list();
+    public Page<EventResponse> list(Pageable pageable) {
+        return eventService.list(pageable);
     }
 }

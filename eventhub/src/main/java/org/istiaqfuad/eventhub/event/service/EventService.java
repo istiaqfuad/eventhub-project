@@ -20,6 +20,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -119,8 +122,61 @@ public class EventService {
     }
 
     @Transactional(readOnly = true)
-    public List<EventResponse> list() {
-        return events.findAll().stream().map(this::toResponse).toList();
+    public Page<EventResponse> list(Pageable pageable) {
+        return events.findAll(pageable).map(this::toResponse);
+    }
+
+    @CacheEvict(value = "events", key = "#id")
+    public EventResponse update(Long id, EventRequest request, AuthenticatedUser caller) {
+        Event event = events.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Event", id));
+        
+        Organizer organizer = resolveOrganizer(request, caller);
+        if (!event.getOrganizer().getId().equals(organizer.getId()) && !caller.isAdmin()) {
+            throw new AccessDeniedException("You don't have permission to update this event");
+        }
+
+        event.setTitle(request.title());
+        event.setDescription(request.description());
+        if (request.categoryId() != null) {
+            event.setCategory(categories.getReferenceById(request.categoryId()));
+        }
+        if (request.venueId() != null) {
+            event.setVenue(venues.getReferenceById(request.venueId()));
+        }
+        event.setCity(request.city());
+        event.setLatitude(request.latitude());
+        event.setLongitude(request.longitude());
+        event.setStartsAt(request.startsAt());
+        event.setEndsAt(request.endsAt());
+        if (request.imageUrls() != null) {
+            event.getImageUrls().clear();
+            event.getImageUrls().addAll(request.imageUrls());
+        }
+        if (request.tagIds() != null) {
+            event.getTags().clear();
+            for (Long tagId : request.tagIds()) {
+                event.getTags().add(tags.getReferenceById(tagId));
+            }
+        }
+        return toResponse(events.save(event));
+    }
+
+    @CacheEvict(value = "events", key = "#id")
+    public void delete(Long id, AuthenticatedUser caller) {
+        Event event = events.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Event", id));
+                
+        // For delete, we use dummy request to resolve organizer or just check directly
+        if (!caller.isAdmin()) {
+            Organizer organizer = organizers.findByUserId(caller.id())
+                    .orElseThrow(() -> new AccessDeniedException("Caller is not a registered organizer"));
+            if (!event.getOrganizer().getId().equals(organizer.getId())) {
+                throw new AccessDeniedException("You don't have permission to delete this event");
+            }
+        }
+        
+        events.delete(event);
     }
 
     private EventResponse toResponse(Event event) {

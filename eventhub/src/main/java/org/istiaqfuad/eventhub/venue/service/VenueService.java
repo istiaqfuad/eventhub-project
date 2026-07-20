@@ -11,6 +11,15 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.istiaqfuad.eventhub.venue.dto.SeatRequest;
+import org.istiaqfuad.eventhub.venue.dto.SeatResponse;
+import org.istiaqfuad.eventhub.venue.dto.SectionRequest;
+import org.istiaqfuad.eventhub.venue.dto.SectionResponse;
+import org.istiaqfuad.eventhub.venue.entity.Seat;
+import org.istiaqfuad.eventhub.venue.entity.Section;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 /**
@@ -78,8 +87,87 @@ public class VenueService {
     }
 
     @Transactional(readOnly = true)
-    public List<VenueResponse> list() {
-        return venues.findAll().stream().map(this::toResponse).toList();
+    public Page<VenueResponse> list(Pageable pageable) {
+        return venues.findAll(pageable).map(this::toResponse);
+    }
+
+    @CacheEvict(value = "venues", key = "#id")
+    public VenueResponse update(Long id, VenueRequest request) {
+        Venue venue = venues.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Venue", id));
+        venue.setName(request.name());
+        venue.setLayoutType(request.layoutType());
+        venue.setAddress(request.address());
+        venue.setCity(request.city());
+        return toResponse(venues.save(venue));
+    }
+
+    @CacheEvict(value = "venues", key = "#id")
+    public void delete(Long id) {
+        Venue venue = venues.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Venue", id));
+        venues.delete(venue);
+    }
+
+    @CacheEvict(value = "venues", allEntries = true)
+    public SectionResponse createSection(SectionRequest request) {
+        Venue venue = venues.findById(request.venueId())
+                .orElseThrow(() -> new ResourceNotFoundException("Venue", request.venueId()));
+        Section section = new Section();
+        section.setVenue(venue);
+        section.setName(request.name());
+        section.setSeatType(request.seatType());
+        section.setBasePrice(request.basePrice());
+        section = sections.save(section);
+        return new SectionResponse(section.getId(), venue.getId(), section.getName(), section.getSeatType(), section.getBasePrice(), section.getCreatedAt(), section.getUpdatedAt());
+    }
+
+    @CacheEvict(value = "venues", allEntries = true)
+    public SectionResponse updateSection(Long id, SectionRequest request) {
+        Section section = sections.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Section", id));
+        section.setName(request.name());
+        section.setSeatType(request.seatType());
+        section.setBasePrice(request.basePrice());
+        section = sections.save(section);
+        return new SectionResponse(section.getId(), section.getVenue().getId(), section.getName(), section.getSeatType(), section.getBasePrice(), section.getCreatedAt(), section.getUpdatedAt());
+    }
+
+    @CacheEvict(value = "venues", allEntries = true)
+    public void deleteSection(Long id) {
+        Section section = sections.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Section", id));
+        sections.delete(section);
+    }
+
+    @CacheEvict(value = "venues", allEntries = true)
+    public SeatResponse createSeat(SeatRequest request) {
+        Section section = sections.findById(request.sectionId())
+                .orElseThrow(() -> new ResourceNotFoundException("Section", request.sectionId()));
+        Seat seat = new Seat();
+        seat.setSection(section);
+        seat.setRowLabel(request.rowLabel());
+        seat.setColNumber(request.colNumber());
+        seat.setStatus(org.istiaqfuad.eventhub.venue.entity.SeatStatus.FREE);
+        seat = seats.save(seat);
+        return new SeatResponse(seat.getId(), section.getId(), seat.getRowLabel(), seat.getColNumber(), seat.getStatus(), seat.getVersion(), seat.getCreatedAt(), seat.getUpdatedAt());
+    }
+
+    @CacheEvict(value = "venues", allEntries = true)
+    public SeatResponse updateSeat(Long id, SeatRequest request) {
+        Seat seat = seats.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Seat", id));
+        seat.setRowLabel(request.rowLabel());
+        seat.setColNumber(request.colNumber());
+        seat = seats.save(seat);
+        return new SeatResponse(seat.getId(), seat.getSection().getId(), seat.getRowLabel(), seat.getColNumber(), seat.getStatus(), seat.getVersion(), seat.getCreatedAt(), seat.getUpdatedAt());
+    }
+
+    @CacheEvict(value = "venues", allEntries = true)
+    public void deleteSeat(Long id) {
+        Seat seat = seats.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Seat", id));
+        seats.delete(seat);
     }
 
     private VenueResponse toResponse(Venue venue) {
