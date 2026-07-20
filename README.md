@@ -2,10 +2,6 @@
 
 EventHub is a modern, scalable event management and booking platform built with Spring Boot and React. It provides robust features for event organizers and attendees, including real-time seat holds, transactional outbox pattern, rate limiting, and a virtual waiting room for high-demand events.
 
-## 🚀 Live Demo
-
-**Backend URL:** [http://213.136.80.53:8080](http://213.136.80.53:8080)
-**Frontend URL:** [http://213.136.80.53:3000](http://213.136.80.53:3000)
 
 ## 🛠 Features
 
