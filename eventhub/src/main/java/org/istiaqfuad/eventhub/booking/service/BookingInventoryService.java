@@ -7,6 +7,7 @@ import org.istiaqfuad.eventhub.booking.repository.BookingItemRepository;
 import org.istiaqfuad.eventhub.event.repository.TicketTypeRepository;
 import org.istiaqfuad.eventhub.outbox.service.OutboxService;
 import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Recover;
@@ -26,13 +27,16 @@ public class BookingInventoryService {
     private final BookingItemRepository bookingItems;
     private final TicketTypeRepository ticketTypes;
     private final OutboxService outbox;
+    private final StringRedisTemplate redis;
 
     public BookingInventoryService(BookingItemRepository bookingItems,
                                    TicketTypeRepository ticketTypes,
-                                   OutboxService outbox) {
+                                   OutboxService outbox,
+                                   StringRedisTemplate redis) {
         this.bookingItems = bookingItems;
         this.ticketTypes = ticketTypes;
         this.outbox = outbox;
+        this.redis = redis;
     }
 
     /**
@@ -53,6 +57,7 @@ public class BookingInventoryService {
         for (BookingItem item : bookingItems.findByBookingId(booking.getId())) {
             if (item.getSeat() != null) {
                 item.getSeat().setStatus(SeatStatus.BOOKED);
+                redis.delete("seat:hold:" + item.getSeat().getId());
             }
         }
         booking.setStatus(BookingStatus.CONFIRMED);
@@ -90,6 +95,7 @@ public class BookingInventoryService {
         for (BookingItem item : items) {
             if (item.getSeat() != null) {
                 item.getSeat().setStatus(SeatStatus.FREE);
+                redis.delete("seat:hold:" + item.getSeat().getId());
             } else if (item.getTicketType() != null) {
                 ticketTypes.release(item.getTicketType().getId(), 1);
             }

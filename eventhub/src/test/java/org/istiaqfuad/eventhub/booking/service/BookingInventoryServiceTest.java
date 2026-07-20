@@ -10,6 +10,7 @@ import org.istiaqfuad.eventhub.venue.entity.Seat;
 import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.util.List;
 
@@ -27,6 +28,7 @@ class BookingInventoryServiceTest {
     private BookingItemRepository bookingItems;
     private TicketTypeRepository ticketTypes;
     private OutboxService outboxService;
+    private StringRedisTemplate redis;
     private BookingInventoryService service;
 
     private Seat seat;
@@ -38,7 +40,8 @@ class BookingInventoryServiceTest {
         bookingItems = mock(BookingItemRepository.class);
         ticketTypes = mock(TicketTypeRepository.class);
         outboxService = mock(OutboxService.class);
-        service = new BookingInventoryService(bookingItems, ticketTypes, outboxService);
+        redis = mock(StringRedisTemplate.class);
+        service = new BookingInventoryService(bookingItems, ticketTypes, outboxService, redis);
 
         booking = new Booking();
         booking.setId(5L);
@@ -61,7 +64,7 @@ class BookingInventoryServiceTest {
     }
 
     @Test
-    void confirmBooksSeatsAndConfirmsBooking() {
+    void confirmBooksSeatsAndConfirmsBookingAndClearsRedisHold() {
         service.confirm(booking);
 
         assertThat(seat.getStatus()).isEqualTo(SeatStatus.BOOKED);
@@ -69,10 +72,11 @@ class BookingInventoryServiceTest {
         assertThat(booking.getExpiresAt()).isNull();
         // GA quota stays counted on confirm.
         verifyNoInteractions(ticketTypes);
+        verify(redis).delete("seat:hold:" + seat.getId());
     }
 
     @Test
-    void releaseFreesSeatsReturnsQuotaDeletesItemsAndCancels() {
+    void releaseFreesSeatsReturnsQuotaDeletesItemsAndCancelsAndClearsRedisHold() {
         service.release(booking);
 
         assertThat(seat.getStatus()).isEqualTo(SeatStatus.FREE);
@@ -81,5 +85,6 @@ class BookingInventoryServiceTest {
         verify(bookingItems).deleteAll(anyList());
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertThat(booking.getExpiresAt()).isNull();
+        verify(redis).delete("seat:hold:" + seat.getId());
     }
 }

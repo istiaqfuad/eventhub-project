@@ -18,12 +18,14 @@ import org.istiaqfuad.eventhub.user.entity.User;
 import org.istiaqfuad.eventhub.user.repository.UserRepository;
 import org.istiaqfuad.eventhub.venue.entity.Section;
 import org.istiaqfuad.eventhub.venue.entity.Seat;
-import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
-import org.istiaqfuad.eventhub.venue.entity.Venue;
 import org.istiaqfuad.eventhub.venue.repository.SeatRepository;
 import org.istiaqfuad.eventhub.waitingroom.WaitingRoomService;
+import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
+import org.istiaqfuad.eventhub.venue.entity.Venue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
@@ -55,9 +57,12 @@ class BookingServiceTest {
     private TicketTypeRepository ticketTypes;
     private BookingItemRepository bookingItems;
     private WaitingRoomService waitingRoom;
+    private StringRedisTemplate redis;
+    private ValueOperations<String, String> redisOps;
     private BookingService service;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
         bookings = mock(BookingRepository.class);
         users = mock(UserRepository.class);
@@ -66,8 +71,12 @@ class BookingServiceTest {
         ticketTypes = mock(TicketTypeRepository.class);
         bookingItems = mock(BookingItemRepository.class);
         waitingRoom = mock(WaitingRoomService.class);
+        redis = mock(StringRedisTemplate.class);
+        redisOps = mock(ValueOperations.class);
+        when(redis.opsForValue()).thenReturn(redisOps);
+        
         service = new BookingService(bookings, users, events, seats, ticketTypes, bookingItems,
-                new BookingProperties(Duration.ofMinutes(15)), waitingRoom);
+                new BookingProperties(Duration.ofMinutes(15)), waitingRoom, redis);
 
         when(users.getReferenceById(USER_ID)).thenReturn(userRef());
         when(bookings.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -124,6 +133,7 @@ class BookingServiceTest {
     void seatedBookingHoldsSeatsAndSumsSectionPrices() {
         Seat s1 = freeSeat(1L, "50.00");
         Seat s2 = freeSeat(2L, "30.00");
+        when(redisOps.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
 
         BookingResponse res = service.create(seatedRequest(1L, 2L), USER_ID);
 
@@ -151,6 +161,7 @@ class BookingServiceTest {
         freeSeat(1L, "50.00");
         ticketType(7L, "25.00");
         when(ticketTypes.reserve(eq(7L), anyInt())).thenReturn(1);
+        when(redisOps.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
 
         BookingResponse res = service.create(new BookingRequest(EVENT_ID,
                 List.of(new BookingItemRequest(1L, null), new BookingItemRequest(null, 7L))), USER_ID);
@@ -162,6 +173,18 @@ class BookingServiceTest {
     void heldSeatIsRejectedAsConflict() {
         Seat seat = freeSeat(1L, "50.00");
         seat.setStatus(SeatStatus.HELD);
+        when(redisOps.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(seatedRequest(1L), USER_ID))
+                .isInstanceOf(ReservationConflictException.class);
+        verify(bookingItems, never()).saveAll(any());
+    }
+
+    @Test
+    void heldSeatInRedisIsRejectedAsConflict() {
+        Seat seat = freeSeat(1L, "50.00");
+        when(redisOps.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(false);
+        when(redisOps.get(any())).thenReturn("someOtherUser");
 
         assertThatThrownBy(() -> service.create(seatedRequest(1L), USER_ID))
                 .isInstanceOf(ReservationConflictException.class);
@@ -190,6 +213,7 @@ class BookingServiceTest {
         seat.setSection(section);
         seat.setStatus(SeatStatus.FREE);
         when(seats.findById(1L)).thenReturn(Optional.of(seat));
+        when(redisOps.setIfAbsent(any(), any(), any(Duration.class))).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(seatedRequest(1L), USER_ID))
                 .isInstanceOf(InvalidReservationException.class);

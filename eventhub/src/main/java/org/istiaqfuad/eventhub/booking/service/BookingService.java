@@ -21,6 +21,10 @@ import org.istiaqfuad.eventhub.venue.entity.Seat;
 import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
 import org.istiaqfuad.eventhub.venue.repository.SeatRepository;
 import org.istiaqfuad.eventhub.waitingroom.WaitingRoomService;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,11 +56,12 @@ public class BookingService {
     private final BookingItemRepository bookingItems;
     private final BookingProperties bookingProperties;
     private final WaitingRoomService waitingRoom;
+    private final StringRedisTemplate redis;
 
     public BookingService(BookingRepository bookings, UserRepository users, EventRepository events,
                           SeatRepository seats, TicketTypeRepository ticketTypes,
                           BookingItemRepository bookingItems, BookingProperties bookingProperties,
-                          WaitingRoomService waitingRoom) {
+                          WaitingRoomService waitingRoom, StringRedisTemplate redis) {
         this.bookings = bookings;
         this.users = users;
         this.events = events;
@@ -65,8 +70,10 @@ public class BookingService {
         this.bookingItems = bookingItems;
         this.bookingProperties = bookingProperties;
         this.waitingRoom = waitingRoom;
+        this.redis = redis;
     }
 
+    @Retryable(retryFor = ObjectOptimisticLockingFailureException.class, maxAttempts = 3, backoff = @Backoff(delay = 100))
     public BookingResponse create(BookingRequest request, Long userId) {
         Event event = events.findById(request.eventId())
                 .orElseThrow(() -> new ResourceNotFoundException("Event", request.eventId()));
@@ -91,7 +98,7 @@ public class BookingService {
             BookingItem item = new BookingItem();
             item.setBooking(booking);
             if (line.seatId() != null) {
-                item.setPrice(holdSeat(line.seatId(), event, seenSeatIds, item));
+                item.setPrice(holdSeat(line.seatId(), event, seenSeatIds, item, userId));
             } else {
                 item.setPrice(reserveGa(line.ticketTypeId(), request.eventId(), item));
             }
@@ -105,9 +112,18 @@ public class BookingService {
         return toResponse(saved, savedItems);
     }
 
-    private BigDecimal holdSeat(Long seatId, Event event, Set<Long> seenSeatIds, BookingItem item) {
+    private BigDecimal holdSeat(Long seatId, Event event, Set<Long> seenSeatIds, BookingItem item, Long userId) {
         if (!seenSeatIds.add(seatId)) {
             throw new InvalidReservationException("Duplicate seat in request: " + seatId);
+        }
+        
+        String lockKey = "seat:hold:" + seatId;
+        Boolean acquired = redis.opsForValue().setIfAbsent(lockKey, String.valueOf(userId), bookingProperties.holdTtl());
+        if (Boolean.FALSE.equals(acquired)) {
+            String owner = redis.opsForValue().get(lockKey);
+            if (!String.valueOf(userId).equals(owner)) {
+                throw new ReservationConflictException("Seat " + seatId + " is no longer available");
+            }
         }
         Seat seat = seats.findById(seatId)
                 .orElseThrow(() -> new ResourceNotFoundException("Seat", seatId));
