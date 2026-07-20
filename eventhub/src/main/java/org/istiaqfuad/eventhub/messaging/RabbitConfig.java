@@ -30,6 +30,7 @@ public class RabbitConfig {
 
     // --- Queue names ---
     public static final String QUEUE_ANALYTICS = "analytics.update";
+    public static final String QUEUE_TICKET = "ticket.generate";
 
     @Bean
     public TopicExchange eventHubExchange() {
@@ -46,6 +47,20 @@ public class RabbitConfig {
     @Bean
     public Binding analyticsBinding() {
         return BindingBuilder.bind(analyticsQueue())
+                .to(eventHubExchange())
+                .with(ROUTING_BOOKING_CONFIRMED);
+    }
+
+    // ── Ticket queue ───────────────────────────────────────────────────────────
+
+    @Bean
+    public Queue ticketQueue() {
+        return QueueBuilder.durable(QUEUE_TICKET).build();
+    }
+
+    @Bean
+    public Binding ticketBinding() {
+        return BindingBuilder.bind(ticketQueue())
                 .to(eventHubExchange())
                 .with(ROUTING_BOOKING_CONFIRMED);
     }
