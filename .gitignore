@@ -1,2 +1,5 @@
 node_modules/\ntarget/\n.next/\n
 /.env
+.agents/
+.claude/
+.junie/
