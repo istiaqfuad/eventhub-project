@@ -31,6 +31,8 @@ public class RabbitConfig {
     // --- Queue names ---
     public static final String QUEUE_ANALYTICS = "analytics.update";
     public static final String QUEUE_TICKET = "ticket.generate";
+    public static final String QUEUE_INVOICE = "invoice.generate";
+    public static final String QUEUE_EMAIL = "email.send";
 
     @Bean
     public TopicExchange eventHubExchange() {
@@ -61,6 +63,34 @@ public class RabbitConfig {
     @Bean
     public Binding ticketBinding() {
         return BindingBuilder.bind(ticketQueue())
+                .to(eventHubExchange())
+                .with(ROUTING_BOOKING_CONFIRMED);
+    }
+
+    // ── Invoice queue ──────────────────────────────────────────────────────────
+
+    @Bean
+    public Queue invoiceQueue() {
+        return QueueBuilder.durable(QUEUE_INVOICE).build();
+    }
+
+    @Bean
+    public Binding invoiceBinding() {
+        return BindingBuilder.bind(invoiceQueue())
+                .to(eventHubExchange())
+                .with(ROUTING_BOOKING_CONFIRMED);
+    }
+
+    // ── Email queue ────────────────────────────────────────────────────────────
+
+    @Bean
+    public Queue emailQueue() {
+        return QueueBuilder.durable(QUEUE_EMAIL).build();
+    }
+
+    @Bean
+    public Binding emailBinding() {
+        return BindingBuilder.bind(emailQueue())
                 .to(eventHubExchange())
                 .with(ROUTING_BOOKING_CONFIRMED);
     }
