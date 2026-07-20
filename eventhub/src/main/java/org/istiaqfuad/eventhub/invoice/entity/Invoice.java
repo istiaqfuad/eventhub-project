@@ -5,6 +5,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
@@ -19,6 +22,10 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "invoices")
 public class Invoice extends AuditableEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false, unique = true, updatable = false, length = 50)
     private String invoiceNumber;
@@ -44,6 +51,14 @@ public class Invoice extends AuditableEntity {
     public Invoice() {
         this.status = InvoiceStatus.ISSUED;
         this.issuedAt = OffsetDateTime.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getInvoiceNumber() {
