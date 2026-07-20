@@ -22,9 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.istiaqfuad.eventhub.outbox.service.OutboxService;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,16 +45,19 @@ public class EventService {
     private final VenueRepository venues;
     private final TagRepository tags;
     private final org.istiaqfuad.eventhub.event.repository.TicketTypeRepository ticketTypes;
+    private final OutboxService outbox;
 
     public EventService(EventRepository events, OrganizerRepository organizers,
                         CategoryRepository categories, VenueRepository venues, TagRepository tags,
-                        org.istiaqfuad.eventhub.event.repository.TicketTypeRepository ticketTypes) {
+                        org.istiaqfuad.eventhub.event.repository.TicketTypeRepository ticketTypes,
+                        OutboxService outbox) {
         this.events = events;
         this.organizers = organizers;
         this.categories = categories;
         this.venues = venues;
         this.tags = tags;
         this.ticketTypes = ticketTypes;
+        this.outbox = outbox;
     }
 
     @Transactional(readOnly = true)
@@ -96,7 +101,12 @@ public class EventService {
                 event.getTags().add(tags.getReferenceById(tagId));
             }
         }
-        return toResponse(events.save(event));
+        event = events.save(event);
+        outbox.record("Event", event.getId().toString(), "EventCreated", Map.of(
+                "eventType", "EventCreated",
+                "eventId", event.getId()
+        ));
+        return toResponse(event);
     }
 
     /**
@@ -159,7 +169,12 @@ public class EventService {
                 event.getTags().add(tags.getReferenceById(tagId));
             }
         }
-        return toResponse(events.save(event));
+        event = events.save(event);
+        outbox.record("Event", event.getId().toString(), "EventUpdated", Map.of(
+                "eventType", "EventUpdated",
+                "eventId", event.getId()
+        ));
+        return toResponse(event);
     }
 
     @CacheEvict(value = "events", key = "#id")
@@ -177,6 +192,10 @@ public class EventService {
         }
         
         events.delete(event);
+        outbox.record("Event", event.getId().toString(), "EventDeleted", Map.of(
+                "eventType", "EventDeleted",
+                "eventId", event.getId()
+        ));
     }
 
     private EventResponse toResponse(Event event) {

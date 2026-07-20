@@ -5,6 +5,7 @@ import org.istiaqfuad.eventhub.event.dto.EventResponse;
 import org.istiaqfuad.eventhub.event.repository.CategoryRepository;
 import org.istiaqfuad.eventhub.event.repository.EventRepository;
 import org.istiaqfuad.eventhub.event.repository.TagRepository;
+import org.istiaqfuad.eventhub.outbox.service.OutboxService;
 import org.istiaqfuad.eventhub.security.web.AuthenticatedUser;
 import org.istiaqfuad.eventhub.user.entity.Organizer;
 import org.istiaqfuad.eventhub.user.repository.OrganizerRepository;
@@ -43,7 +44,7 @@ class EventServiceTest {
         events = mock(EventRepository.class);
         organizers = mock(OrganizerRepository.class);
         service = new EventService(events, organizers,
-                mock(CategoryRepository.class), mock(VenueRepository.class), mock(TagRepository.class), mock(org.istiaqfuad.eventhub.event.repository.TicketTypeRepository.class));
+                mock(CategoryRepository.class), mock(VenueRepository.class), mock(TagRepository.class), mock(org.istiaqfuad.eventhub.event.repository.TicketTypeRepository.class), mock(OutboxService.class));
         when(events.save(any())).thenAnswer(inv -> inv.getArgument(0));
     }
 

@@ -33,6 +33,7 @@ public class RabbitConfig {
     public static final String QUEUE_TICKET = "ticket.generate";
     public static final String QUEUE_INVOICE = "invoice.generate";
     public static final String QUEUE_EMAIL = "email.send";
+    public static final String QUEUE_INDEX = "event.index";
 
     @Bean
     public TopicExchange eventHubExchange() {
@@ -93,6 +94,34 @@ public class RabbitConfig {
         return BindingBuilder.bind(emailQueue())
                 .to(eventHubExchange())
                 .with(ROUTING_BOOKING_CONFIRMED);
+    }
+
+    // ── Index queue ────────────────────────────────────────────────────────────
+
+    @Bean
+    public Queue indexQueue() {
+        return QueueBuilder.durable(QUEUE_INDEX).build();
+    }
+
+    @Bean
+    public Binding indexBindingCreated() {
+        return BindingBuilder.bind(indexQueue())
+                .to(eventHubExchange())
+                .with("EventCreated");
+    }
+
+    @Bean
+    public Binding indexBindingUpdated() {
+        return BindingBuilder.bind(indexQueue())
+                .to(eventHubExchange())
+                .with("EventUpdated");
+    }
+
+    @Bean
+    public Binding indexBindingDeleted() {
+        return BindingBuilder.bind(indexQueue())
+                .to(eventHubExchange())
+                .with("EventDeleted");
     }
 
     /**
