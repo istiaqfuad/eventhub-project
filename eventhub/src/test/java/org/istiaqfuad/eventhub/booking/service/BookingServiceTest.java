@@ -21,6 +21,7 @@ import org.istiaqfuad.eventhub.venue.entity.Seat;
 import org.istiaqfuad.eventhub.venue.entity.SeatStatus;
 import org.istiaqfuad.eventhub.venue.entity.Venue;
 import org.istiaqfuad.eventhub.venue.repository.SeatRepository;
+import org.istiaqfuad.eventhub.waitingroom.WaitingRoomService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
@@ -53,6 +54,7 @@ class BookingServiceTest {
     private SeatRepository seats;
     private TicketTypeRepository ticketTypes;
     private BookingItemRepository bookingItems;
+    private WaitingRoomService waitingRoom;
     private BookingService service;
 
     @BeforeEach
@@ -63,8 +65,9 @@ class BookingServiceTest {
         seats = mock(SeatRepository.class);
         ticketTypes = mock(TicketTypeRepository.class);
         bookingItems = mock(BookingItemRepository.class);
+        waitingRoom = mock(WaitingRoomService.class);
         service = new BookingService(bookings, users, events, seats, ticketTypes, bookingItems,
-                new BookingProperties(Duration.ofMinutes(15)));
+                new BookingProperties(Duration.ofMinutes(15)), waitingRoom);
 
         when(users.getReferenceById(USER_ID)).thenReturn(userRef());
         when(bookings.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));

@@ -20,10 +20,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import org.istiaqfuad.eventhub.outbox.service.OutboxService;
+
 class BookingInventoryServiceTest {
 
     private BookingItemRepository bookingItems;
     private TicketTypeRepository ticketTypes;
+    private OutboxService outboxService;
     private BookingInventoryService service;
 
     private Seat seat;
@@ -34,7 +37,8 @@ class BookingInventoryServiceTest {
     void setUp() {
         bookingItems = mock(BookingItemRepository.class);
         ticketTypes = mock(TicketTypeRepository.class);
-        service = new BookingInventoryService(bookingItems, ticketTypes);
+        outboxService = mock(OutboxService.class);
+        service = new BookingInventoryService(bookingItems, ticketTypes, outboxService);
 
         booking = new Booking();
         booking.setId(5L);
