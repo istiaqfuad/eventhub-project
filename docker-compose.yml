@@ -20,11 +20,13 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USERNAME=guest
       - RABBITMQ_PASSWORD=guest
+      - SPRING_ELASTICSEARCH_URIS=http://eventhub-elasticsearch:9200
     ports:
       - "8080:8080"
     depends_on:
       - redis
       - rabbitmq
+      - elasticsearch
     restart: unless-stopped
     networks:
       - dokploy-network
@@ -68,6 +70,20 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: eventhub-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    networks:
+      - dokploy-network
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
 networks:
   dokploy-network:
     external: true
@@ -75,3 +91,4 @@ networks:
 volumes:
   redis-data:
   rabbitmq-data:
+  elasticsearch-data:
