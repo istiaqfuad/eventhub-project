@@ -33,19 +33,34 @@ public class EventSearchSyncConsumer {
         log.info("Received {} for event {}", eventType, eventId);
 
         if ("EventDeleted".equals(eventType)) {
-            searchRepository.deleteById(idStr);
-            log.info("Removed event {} from Elasticsearch", idStr);
+            deleteFromSearch(idStr);
             return;
         }
 
         // For created and updated, fetch latest state from PostgreSQL
         eventRepository.findById(eventId).ifPresentOrElse(event -> {
-            EventDocument doc = mapToDocument(event);
-            searchRepository.save(doc);
-            log.info("Indexed event {} in Elasticsearch", idStr);
+            indexEvent(idStr, event);
         }, () -> {
             log.warn("Event {} not found in PostgreSQL; skipping indexing", eventId);
         });
+    }
+
+    private void indexEvent(String idStr, Event event) {
+        try {
+            searchRepository.save(mapToDocument(event));
+            log.info("Indexed event {} in Elasticsearch", idStr);
+        } catch (Exception ex) {
+            log.error("Elasticsearch unavailable; could not index event {}: {}", idStr, ex.getMessage());
+        }
+    }
+
+    private void deleteFromSearch(String idStr) {
+        try {
+            searchRepository.deleteById(idStr);
+            log.info("Removed event {} from Elasticsearch", idStr);
+        } catch (Exception ex) {
+            log.error("Elasticsearch unavailable; could not delete event {}: {}", idStr, ex.getMessage());
+        }
     }
 
     private EventDocument mapToDocument(Event event) {
