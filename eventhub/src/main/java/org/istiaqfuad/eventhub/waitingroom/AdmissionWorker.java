@@ -40,7 +40,7 @@ public class AdmissionWorker {
         this.properties = properties;
     }
 
-    @Scheduled(fixedDelay = 1000)
+    @Scheduled(fixedDelayString = "${app.waiting-room.poll-delay:1000}")
     public void admit() {
         List<Long> highDemandIds = findHighDemandEventIds();
         for (Long eventId : highDemandIds) {
@@ -59,8 +59,7 @@ public class AdmissionWorker {
     }
 
     private List<Long> findHighDemandEventIds() {
-        return events.findAll().stream()
-                .filter(e -> Boolean.TRUE.equals(e.getHighDemand()))
+        return events.findByHighDemandTrue().stream()
                 .map(Event::getId)
                 .toList();
     }
