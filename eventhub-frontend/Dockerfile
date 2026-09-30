@@ -17,6 +17,7 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 ENV NODE_ENV production
+ENV HOSTNAME="0.0.0.0"
 # Copy necessary files
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/public ./public
