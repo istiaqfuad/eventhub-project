@@ -17,10 +17,15 @@ import java.util.Set;
  * Scheduled worker that drains the waiting queue for high-demand events
  * and issues admission tokens.
  *
- * <p>Every second, {@code ZPOPMIN waitroom:{eventId} drainPerSecond} atomically
+ * <p>Every poll interval, {@code ZPOPMIN waitroom:{eventId} drainPerSecond} atomically
  * removes the top-ranked users and sets admission tokens with a TTL. Only
  * users with a valid token can proceed to book. Unused tokens expire naturally
  * so capacity slots are reclaimed.
+ *
+ * <p><b>Neon compute gate:</b> the worker checks {@code SCARD waitroom:active} first
+ * and returns immediately when no queue exists, so the per-second Postgres query
+ * only runs when users are actually waiting. This is what lets the database reach
+ * Neon's 5-minute idle threshold and scale to zero on the free tier.
  */
 @Service
 @EnableConfigurationProperties(WaitingRoomProperties.class)
@@ -31,24 +36,32 @@ public class AdmissionWorker {
     private final StringRedisTemplate redis;
     private final EventRepository events;
     private final WaitingRoomProperties properties;
+    private final WaitingRoomService waitingRoom;
 
     public AdmissionWorker(StringRedisTemplate redis,
                            EventRepository events,
-                           WaitingRoomProperties properties) {
+                           WaitingRoomProperties properties,
+                           WaitingRoomService waitingRoom) {
         this.redis = redis;
         this.events = events;
         this.properties = properties;
+        this.waitingRoom = waitingRoom;
     }
 
     @Scheduled(fixedDelayString = "${app.waiting-room.poll-delay:1000}")
     public void admit() {
+        if (waitingRoom.activeQueueCount() == 0) {
+            return;
+        }
         List<Long> highDemandIds = findHighDemandEventIds();
         for (Long eventId : highDemandIds) {
             String queueKey = "waitroom:" + eventId;
             Set<ZSetOperations.TypedTuple<String>> batch =
                     redis.opsForZSet().popMin(queueKey, properties.drainPerSecond());
-            if (batch == null || batch.isEmpty()) continue;
-
+            if (batch == null || batch.isEmpty()) {
+                waitingRoom.markQueueInactive(eventId);
+                continue;
+            }
             for (ZSetOperations.TypedTuple<String> entry : batch) {
                 String userId = entry.getValue();
                 String tokenKey = "admit:" + eventId + ":" + userId;

@@ -5,6 +5,7 @@ import org.istiaqfuad.eventhub.event.repository.EventRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.elasticsearch.core.geo.GeoPoint;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +20,8 @@ public class EventSearchSyncConsumer {
     private final EventRepository eventRepository;
     private final EventSearchRepository searchRepository;
 
-    public EventSearchSyncConsumer(EventRepository eventRepository, EventSearchRepository searchRepository) {
+    public EventSearchSyncConsumer(EventRepository eventRepository,
+                                   @Lazy EventSearchRepository searchRepository) {
         this.eventRepository = eventRepository;
         this.searchRepository = searchRepository;
     }

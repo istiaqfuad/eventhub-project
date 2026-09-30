@@ -26,5 +26,11 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "typescript": "^5.7.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }

@@ -19,7 +19,7 @@ public class OutboxRelayScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(OutboxRelayScheduler.class);
     private static final long BUSY_DELAY_MS = 500;
-    private static final long IDLE_DELAY_MS = 5000;
+    private static final long IDLE_DELAY_MS = 30000;
 
     private final TaskScheduler taskScheduler;
     private final OutboxRelay relay;
