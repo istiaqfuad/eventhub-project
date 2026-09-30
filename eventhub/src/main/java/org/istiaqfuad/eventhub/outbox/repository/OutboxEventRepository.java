@@ -4,6 +4,7 @@ import org.istiaqfuad.eventhub.outbox.entity.OutboxEvent;
 import org.istiaqfuad.eventhub.outbox.entity.OutboxStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,4 +15,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> 
      * Limited to 100 to bound each relay cycle's transaction duration.
      */
     List<OutboxEvent> findTop100ByStatusOrderByCreatedAtAsc(OutboxStatus status);
+
+    /** Deletes processed/failed events older than the cutoff. Returns rows deleted. */
+    int deleteByStatusInAndProcessedAtBefore(List<OutboxStatus> statuses, OffsetDateTime cutoff);
 }

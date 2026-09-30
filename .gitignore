@@ -4,3 +4,4 @@ node_modules/\ntarget/\n.next/\n
 .claude/
 .junie/
 Frehser_CV/
+server_logs/

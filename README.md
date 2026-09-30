@@ -36,18 +36,22 @@ EventHub is a modern, scalable event management and booking platform built with 
 
 ### Running Locally
 
-1. **Start the Infrastructure**
-   ```bash
-   docker-compose up -d postgres redis rabbitmq elasticsearch
-   ```
+1. **Configure Environment**
+   Copy `.env.example` to `.env` and fill in the Neon database URL/credentials plus the required Redis and RabbitMQ secrets (compose fails fast without them).
 
-2. **Run the Backend**
+2. **Start the Infrastructure**
+   ```bash
+   docker-compose up -d redis rabbitmq elasticsearch
+   ```
+   The database is PostgreSQL on Neon (serverless) — there is no local Postgres service.
+
+3. **Run the Backend**
    ```bash
    cd eventhub
    ./mvnw spring-boot:run
    ```
 
-3. **Run the Frontend**
+4. **Run the Frontend**
    ```bash
    cd eventhub-frontend
    npm install
