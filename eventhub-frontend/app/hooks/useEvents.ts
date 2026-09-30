@@ -10,8 +10,8 @@ export const useEvents = () => {
   return useQuery<EventResponse[]>({
     queryKey: ["events"],
     queryFn: async () => {
-      const { data } = await apiClient.get<EventResponse[]>("/events");
-      return data;
+      const { data } = await apiClient.get<{ content: EventResponse[] }>("/events?size=100&sort=startsAt,asc");
+      return data.content;
     },
   });
 };
